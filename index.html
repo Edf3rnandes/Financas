@@ -69,7 +69,7 @@ h1,h2,h3{margin:0;text-wrap:balance;font-weight:600;letter-spacing:-.015em}
 
 /* ---------- chrome ---------- */
 .topo{position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
-.topo-in{max-width:1080px;margin:0 auto;padding:10px 16px 0;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.topo-in{max-width:1080px;margin:0 auto;padding:10px 16px 0;display:flex;flex-wrap:wrap;gap:10px;align-items:center;position:relative}
 .marca{display:flex;align-items:center;gap:9px;margin-right:auto;font-weight:700;letter-spacing:-.02em;font-size:16px}
 .marca svg{display:block}
 .status{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-3);font-family:'IBM Plex Mono',monospace}
@@ -79,10 +79,24 @@ h1,h2,h3{margin:0;text-wrap:balance;font-weight:600;letter-spacing:-.015em}
 .ponto.ruim{background:var(--neg)}
 @keyframes pulsa{50%{opacity:.25}}
 
-.mesnav{display:flex;align-items:center;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:3px}
-.mesnav button{background:none;border:0;cursor:pointer;color:var(--ink-2);padding:5px 10px;border-radius:99px;line-height:1}
-.mesnav button:hover{background:var(--surface-3);color:var(--ink)}
-.mesnav .rotulo{min-width:132px;text-align:center;font-weight:600;font-size:14px;color:var(--ink)}
+.datanav{display:flex;align-items:center;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:3px}
+.datanav button{background:none;border:0;cursor:pointer;color:var(--ink-2);padding:5px 10px;border-radius:99px;line-height:1}
+.datanav button:hover{background:var(--surface-3);color:var(--ink)}
+.datanav .rotulo{min-width:126px;text-align:center;font-weight:600;font-size:14px;color:var(--ink);display:flex;align-items:center;justify-content:center;gap:6px}
+.datanav .rotulo::after{content:"";width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid var(--ink-3)}
+.datanav .rotulo[aria-expanded="true"]::after{transform:rotate(180deg)}
+.picker{position:absolute;top:calc(100% + 9px);left:0;z-index:45;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 44px -18px rgba(0,0,0,.45);padding:13px;width:min(312px,calc(100vw - 32px))}
+.picker-ano{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+.picker-ano span{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:17px;letter-spacing:.02em}
+.picker-ano button{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;width:32px;height:32px;cursor:pointer;color:var(--ink-2);line-height:1}
+.picker-ano button:hover{background:var(--surface-3);color:var(--ink)}
+.picker-meses{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.picker-meses button{position:relative;padding:10px 0 12px;border-radius:9px;border:1px solid transparent;background:var(--surface-2);color:var(--ink-2);font-size:13px;cursor:pointer}
+.picker-meses button:hover{background:var(--surface-3);color:var(--ink)}
+.picker-meses button.agora{border-color:var(--line-forte);color:var(--ink)}
+.picker-meses button[aria-current="true"]{background:var(--accent);color:var(--accent-ink);font-weight:600;border-color:var(--accent)}
+.picker-meses button i{position:absolute;left:50%;bottom:5px;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--accent)}
+.picker-meses button[aria-current="true"] i{background:var(--accent-ink)}
 
 .seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:3px;gap:2px}
 .seg button{background:none;border:0;cursor:pointer;padding:5px 11px;border-radius:99px;font-size:13px;color:var(--ink-2);white-space:nowrap}
@@ -223,12 +237,20 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
     <div class="seg" id="seg-ver"></div>
   </div>
   <div class="topo-in" style="padding-top:8px">
-    <div class="mesnav">
+    <div class="datanav">
       <button type="button" id="mes-ant" aria-label="Mês anterior">‹</button>
-      <span class="rotulo mono" id="mes-rot">—</span>
+      <button type="button" class="rotulo mono" id="mes-abre" aria-expanded="false" aria-haspopup="true">—</button>
       <button type="button" id="mes-prox" aria-label="Próximo mês">›</button>
     </div>
     <button type="button" class="btn fantasma mini" id="btn-hoje">Hoje</button>
+    <div class="picker oculto" id="picker">
+      <div class="picker-ano">
+        <button type="button" id="ano-ant" aria-label="Ano anterior">‹</button>
+        <span id="ano-rot">—</span>
+        <button type="button" id="ano-prox" aria-label="Próximo ano">›</button>
+      </div>
+      <div class="picker-meses" id="picker-meses"></div>
+    </div>
   </div>
   <nav class="abas" id="abas" role="tablist"></nav>
 </header>
@@ -252,6 +274,11 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
         <span class="rot">Saiu</span>
         <div class="valor neg" id="p-saiu">—</div>
         <div class="rot" style="margin-top:8px" id="p-saiu-sub"></div>
+      </div>
+      <div class="card saldo menor oculto" id="card-dela">
+        <span class="rot" id="p-dela-rot">Gastos dela</span>
+        <div class="valor" id="p-dela">—</div>
+        <div class="rot" style="margin-top:8px" id="p-dela-sub"></div>
       </div>
     </div>
 
@@ -312,7 +339,7 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
             <div class="campo"><label for="f-valor" id="f-valor-rot">Valor (R$)</label><input id="f-valor" class="mono" inputmode="decimal" required placeholder="0,00"></div>
             <div class="campo"><label for="f-data">Data</label><input id="f-data" type="date" required></div>
             <div class="campo"><label for="f-cat">Categoria</label><select id="f-cat"></select></div>
-            <div class="campo"><label for="f-perfil">De quem</label><select id="f-perfil"></select></div>
+            <div class="campo campo-quem"><label for="f-quem">Quem gastou</label><select id="f-quem"><option value="eu">Eu</option><option value="ela">Ela</option></select></div>
           </div>
           <div class="linha-campos linha-cartao oculto" style="margin-top:11px">
             <div class="campo"><label for="f-cartao">Cartão</label><select id="f-cartao"></select></div>
@@ -345,7 +372,6 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
         <form id="form-cartao" autocomplete="off">
           <div class="linha-campos">
             <div class="campo"><label for="ct-nome">Nome</label><input id="ct-nome" required placeholder="Nubank"></div>
-            <div class="campo"><label for="ct-titular">Titular</label><select id="ct-titular"></select></div>
             <div class="campo"><label for="ct-fecha">Dia do fechamento</label><input id="ct-fecha" class="mono" type="number" min="1" max="31" value="28"></div>
             <div class="campo"><label for="ct-vence">Dia do vencimento</label><input id="ct-vence" class="mono" type="number" min="1" max="31" value="10"></div>
             <div class="campo"><label for="ct-limite">Limite (R$)</label><input id="ct-limite" class="mono" inputmode="decimal" placeholder="opcional"></div>
@@ -428,19 +454,16 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
   <!-- AJUSTES -->
   <section class="vista" id="v-ajustes">
     <div class="card">
-      <div class="card-cab"><h2>Quem usa</h2></div>
+      <div class="card-cab"><h2>Gastos de outra pessoa</h2></div>
       <div class="card-corpo">
+        <p style="margin:0 0 12px;color:var(--ink-2);font-size:13.5px">
+          A conta é sua. O que ela gastar no seu cartão você marca como <b>dela</b> na hora de lançar —
+          ganha etiqueta na lista e vira um filtro aqui em cima.
+        </p>
         <div class="linha-campos">
-          <div class="campo"><label for="aj-nomeA">Nome 1</label><input id="aj-nomeA"></div>
-          <div class="campo"><label for="aj-pinA">Trava (4 dígitos, opcional)</label><input id="aj-pinA" class="mono" inputmode="numeric" maxlength="4" placeholder="sem trava"></div>
-          <div class="campo"><label for="aj-nomeB">Nome 2</label><input id="aj-nomeB"></div>
-          <div class="campo"><label for="aj-pinB">Trava (4 dígitos, opcional)</label><input id="aj-pinB" class="mono" inputmode="numeric" maxlength="4" placeholder="sem trava"></div>
+          <div class="campo"><label for="aj-nome-ela">Como chamar essa pessoa</label><input id="aj-nome-ela" placeholder="Noiva"></div>
         </div>
-        <div class="aviso alerta" style="margin-top:13px">
-          <span>⚠</span>
-          <span>A trava esconde a aba do outro perfil nesta tela, mas não é segredo de verdade: quem tem acesso ao link e sabe mexer consegue ver tudo. Use para privacidade do dia a dia, não para esconder algo sério.</span>
-        </div>
-        <div class="acoes"><button type="button" class="btn" id="aj-salvar-perfis">Salvar</button></div>
+        <div class="acoes"><button type="button" class="btn" id="aj-salvar-nome">Salvar</button></div>
       </div>
     </div>
     <div class="card">
@@ -470,18 +493,6 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
 <button class="fab" id="fab" title="Novo lançamento" aria-label="Novo lançamento">+</button>
 <div class="torrada" id="torrada" role="status" aria-live="polite"></div>
 
-<dialog id="dlg-pin">
-  <form method="dialog" class="modal-corpo">
-    <h2 id="pin-titulo">Trava do perfil</h2>
-    <p id="pin-texto">Digite os 4 dígitos para continuar.</p>
-    <input id="pin-valor" class="mono" inputmode="numeric" maxlength="4" placeholder="••••" style="text-align:center;letter-spacing:.5em;font-size:20px">
-    <div class="acoes">
-      <button class="btn" value="ok">Entrar</button>
-      <button class="btn fantasma" value="cancelar">Cancelar</button>
-    </div>
-  </form>
-</dialog>
-
 <dialog id="dlg-conf">
   <form method="dialog" class="modal-corpo">
     <h2 id="conf-titulo">Confirmar</h2>
@@ -496,7 +507,7 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
 
 <div id="root"></div>
 
-<script type="application/json" id="estado">{"v":1,"updatedAt":0,"config":{"nomeA":"Ed","nomeB":"Noiva","pinA":"","pinB":"","cats":["Mercado","Casa","Filho","Carro","Gasolina","Saúde","Educação","Restaurante","Lazer","Roupas","Assinaturas","Beleza","Casamento","Pets","Outros"],"catsEnt":["Salário","Pró-labore","Dividendos","Freela","Reembolso","Outros"]},"cartoes":[],"lancamentos":[],"compras":[]}</script>
+<script type="application/json" id="estado">{"v":2,"updatedAt":0,"config":{"nomeEla":"Noiva","cats":["Mercado","Casa","Filho","Carro","Gasolina","Saúde","Educação","Restaurante","Lazer","Roupas","Assinaturas","Beleza","Casamento","Pets","Outros"],"catsEnt":["Salário","Pró-labore","Dividendos","Freela","Reembolso","Outros"]},"cartoes":[],"lancamentos":[],"compras":[]}</script>
 
 <script id="appjs">
 (function(){
@@ -504,8 +515,8 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
 
 /* ===================== estado ===================== */
 const PADRAO = {
-  v:1, updatedAt:0,
-  config:{nomeA:"Ed",nomeB:"Noiva",pinA:"",pinB:"",
+  v:2, updatedAt:0,
+  config:{nomeEla:"Noiva",
     cats:["Mercado","Casa","Filho","Carro","Gasolina","Saúde","Educação","Restaurante","Lazer","Roupas","Assinaturas","Beleza","Casamento","Pets","Outros"],
     catsEnt:["Salário","Pró-labore","Dividendos","Freela","Reembolso","Outros"]},
   cartoes:[], lancamentos:[], compras:[]
@@ -523,6 +534,12 @@ function normaliza(e){
   s.cartoes = Array.isArray(s.cartoes)?s.cartoes:[];
   s.lancamentos = Array.isArray(s.lancamentos)?s.lancamentos:[];
   s.compras = Array.isArray(s.compras)?s.compras:[];
+  // migração da versão de perfis (A/B/N) para a etiqueta "dela"
+  if(e && e.config && !e.config.nomeEla && e.config.nomeB) s.config.nomeEla = e.config.nomeB;
+  const migra = r => { if(r && r.dela===undefined){ r.dela = (r.perfil === "B"); delete r.perfil; } return r; };
+  s.lancamentos.forEach(migra); s.compras.forEach(migra);
+  s.cartoes.forEach(c=>{ if(c && "titular" in c) delete c.titular; });
+  s.v = 2;
   return s;
 }
 function lerEmbutido(){
@@ -577,12 +594,8 @@ function torrada(t){
   const n = el("#torrada"); n.textContent = t; n.classList.add("ver");
   clearTimeout(timerTorrada); timerTorrada = setTimeout(()=>n.classList.remove("ver"), 2600);
 }
-function nomePerfil(p){
-  if(p==="A") return S.config.nomeA || "Perfil 1";
-  if(p==="B") return S.config.nomeB || "Perfil 2";
-  return "Nosso";
-}
-function classePerfil(p){ return p==="A"?"a":p==="B"?"b":"n"; }
+function nomeEla(){ return S.config.nomeEla || "Ela"; }
+function etiqueta(dela){ return dela ? '<span class="pilula b">'+esc(nomeEla())+'</span>' : ''; }
 
 /* ===================== regras de negócio ===================== */
 function valorParcela(c,n){
@@ -593,7 +606,7 @@ function valorParcela(c,n){
 function parcelasDe(comp, filtro){
   const out=[];
   for(const c of S.compras){
-    if(filtro && !filtro(c.perfil)) continue;
+    if(filtro && !filtro(c.dela)) continue;
     const k = compDelta(c.compInicio, comp);
     if(k>=0 && k<c.parcelas) out.push({compra:c, n:k+1, valor:valorParcela(c,k+1)});
   }
@@ -612,7 +625,7 @@ function ativoNoMes(l, comp){
 function fluxo(comp, filtro){
   let ent=0, gas=0, fixos=0;
   for(const l of S.lancamentos){
-    if(filtro && !filtro(l.perfil)) continue;
+    if(filtro && !filtro(l.dela)) continue;
     if(!ativoNoMes(l,comp)) continue;
     if(l.tipo==="entrada") ent += l.valor;
     else { gas += l.valor; if(l.fixo) fixos += l.valor; }
@@ -631,7 +644,7 @@ function ultimaComp(){
 function dividaFutura(comp, filtro){
   let t = 0;
   for(const c of S.compras){
-    if(filtro && !filtro(c.perfil)) continue;
+    if(filtro && !filtro(c.dela)) continue;
     for(let n=1;n<=c.parcelas;n++){
       if(compSoma(c.compInicio,n-1) >= comp) t += valorParcela(c,n);
     }
@@ -645,36 +658,17 @@ function primeiraComp(dataISO, cartao){
   return d < fecha ? c : compSoma(c,1);
 }
 
-/* ===================== filtro de perfil ===================== */
-let ver = "tudo";              // tudo | A | B | N
+/* ===================== filtro ===================== */
+let ver = "tudo";              // tudo | meus | dela
 let mes = compHoje();
+let anoPicker = Number(compHoje().split("-")[0]);
 let aba = "painel";
-const destravados = {A:false, B:false};
-
 function filtroAtual(){
-  if(ver==="tudo") return null;
-  return p => p === ver;
+  if(ver==="dela") return d => !!d;
+  if(ver==="meus") return d => !d;
+  return null;
 }
-function precisaPin(alvo){
-  if(alvo==="A") return !!S.config.pinA && !destravados.A;
-  if(alvo==="B") return !!S.config.pinB && !destravados.B;
-  return false;
-}
-function pedirPin(alvo){
-  return new Promise(res=>{
-    const dlg = el("#dlg-pin"), campo = el("#pin-valor");
-    el("#pin-titulo").textContent = "Trava de " + nomePerfil(alvo);
-    el("#pin-texto").textContent = "Digite os 4 dígitos para ver estes lançamentos.";
-    campo.value = "";
-    dlg.onclose = ()=>{
-      if(dlg.returnValue !== "ok") return res(false);
-      const certo = (alvo==="A"?S.config.pinA:S.config.pinB);
-      if(campo.value === certo){ destravados[alvo]=true; res(true); }
-      else { torrada("Trava incorreta."); res(false); }
-    };
-    dlg.showModal(); setTimeout(()=>campo.focus(),50);
-  });
-}
+function rotuloFiltro(){ return ver==="dela" ? nomeEla() : ver==="meus" ? "só meus" : "tudo"; }
 function confirmar(titulo, texto){
   return new Promise(res=>{
     const dlg = el("#dlg-conf");
@@ -763,7 +757,7 @@ async function carregarNuvem(){
 /* ===================== leitor de texto ===================== */
 function interpretar(t){
   const txt = " " + String(t||"").toLowerCase().trim() + " ";
-  const r = {tipo:"gasto", parcelas:1, cartao:null, cat:null, valor:0, desc:"", fixo:false};
+  const r = {tipo:"gasto", parcelas:1, cartao:null, cat:null, valor:0, desc:"", fixo:false, dela:false};
   let resto = txt;
 
   const mp = resto.match(/(\d{1,2})\s*(?:x|vezes|parcelas?)\b/);
@@ -783,6 +777,7 @@ function interpretar(t){
     r.tipo = "entrada"; r.parcelas = 1; r.cartao = null;
   }
   if(/\b(todo m[eê]s|mensal|fixo|fixa|assinatura|aluguel)\b/.test(resto)) r.fixo = true;
+  if(/\b(ela|dela|noiva|esposa|mulher|minha noiva)\b/.test(resto)) r.dela = true;
 
   const lista = r.tipo==="entrada" ? S.config.catsEnt : S.config.cats;
   for(const c of lista){
@@ -793,7 +788,7 @@ function interpretar(t){
     const sin = {"mercado":"Mercado","supermercado":"Mercado","feira":"Mercado","gasolina":"Gasolina","combustível":"Gasolina","combustivel":"Gasolina","posto":"Gasolina","uber":"Carro","carro":"Carro","oficina":"Carro","escola":"Educação","creche":"Filho","fralda":"Filho","filho":"Filho","remédio":"Saúde","remedio":"Saúde","farmácia":"Saúde","farmacia":"Saúde","médico":"Saúde","medico":"Saúde","restaurante":"Restaurante","ifood":"Restaurante","lanche":"Restaurante","aluguel":"Casa","luz":"Casa","água":"Casa","agua":"Casa","internet":"Casa","netflix":"Assinaturas","spotify":"Assinaturas","academia":"Beleza","salão":"Beleza","salao":"Beleza","roupa":"Roupas","casamento":"Casamento","festa":"Casamento","pet":"Pets","salário":"Salário","salario":"Salário","pró-labore":"Pró-labore","prolabore":"Pró-labore"};
     for(const k in sin){ if(resto.indexOf(k)>-1){ r.cat = sin[k]; break; } }
   }
-  r.desc = resto.replace(/\b(gastei|paguei|comprei|no|na|em|de|do|da|com|por|reais|r\$|x|vezes|parcelas?|cartão|cartao|hoje|ontem|todo|todos|m[eê]s|mensal|fixo|fixa)\b/g," ")
+  r.desc = resto.replace(/\b(gastei|gastou|gastaram|paguei|pagou|comprei|comprou|foi|a|o|as|os|um|uma|no|na|em|de|do|da|com|por|reais|r\$|x|vezes|parcelas?|cartão|cartao|hoje|ontem|todo|todos|m[eê]s|mensal|fixo|fixa|ela|dela|noiva|esposa|mulher)\b/g," ")
                 .replace(/\s+/g," ").trim();
   if(r.desc) r.desc = r.desc.charAt(0).toUpperCase()+r.desc.slice(1);
   if(!r.desc) r.desc = r.cat || (r.tipo==="entrada"?"Entrada":"Gasto");
@@ -804,7 +799,8 @@ function interpretar(t){
 function render(){
   if(!S) return;
   renderSeg(); renderAbas();
-  el("#mes-rot").textContent = cap(compRotulo(mes));
+  el("#mes-abre").textContent = cap(MESES_CURTO[Number(mes.split("-")[1])-1]) + " " + mes.split("-")[0];
+  renderPicker();
   els(".vista").forEach(v=>v.classList.toggle("ativa", v.id === "v"+"-"+aba));
   els("#abas button").forEach(b=>b.setAttribute("aria-selected", String(b.dataset.aba===aba)));
   if(aba==="painel") renderPainel();
@@ -817,9 +813,31 @@ function render(){
   el("#fab").classList.toggle("oculto", aba==="lancar");
   marcarStatus();
 }
+function temMovimento(comp){
+  for(const l of S.lancamentos) if(ativoNoMes(l,comp)) return true;
+  return parcelasDe(comp).length > 0;
+}
+function renderPicker(){
+  el("#ano-rot").textContent = anoPicker;
+  el("#picker-meses").innerHTML = MESES_CURTO.map((m,i)=>{
+    const c = anoPicker+"-"+String(i+1).padStart(2,"0");
+    return '<button type="button" data-comp="'+c+'"'
+      + (c===mes?' aria-current="true"':'')
+      + (c===compHoje()?' class="agora"':'')
+      + '>'+cap(m)+(temMovimento(c)?'<i></i>':'')+'</button>';
+  }).join("");
+}
+function abrirPicker(abrir){
+  const pk = el("#picker"), bt = el("#mes-abre");
+  const vai = abrir===undefined ? pk.classList.contains("oculto") : abrir;
+  if(vai) anoPicker = Number(mes.split("-")[0]);
+  pk.classList.toggle("oculto", !vai);
+  bt.setAttribute("aria-expanded", String(vai));
+  if(vai) renderPicker();
+}
 function renderSeg(){
   const seg = el("#seg-ver");
-  const opts = [["tudo","Tudo"],["A",nomePerfil("A")],["B",nomePerfil("B")],["N","Nosso"]];
+  const opts = [["tudo","Tudo"],["meus","Meus"],["dela",nomeEla()]];
   seg.innerHTML = opts.map(o=>'<button type="button" data-ver="'+o[0]+'" aria-pressed="'+(ver===o[0])+'">'+esc(o[1])+'</button>').join("");
 }
 function renderAbas(){
@@ -844,6 +862,16 @@ function renderPainel(){
   el("#p-saiu").textContent = R$(fx.saida);
   el("#p-saiu-sub").textContent = R$(fx.fat)+" em faturas · "+R$(fx.gas)+" à vista";
 
+  const fd = fluxo(mes, d=>!!d);
+  const totalDela = fd.gas + fd.fat;
+  const cardDela = el("#card-dela");
+  cardDela.classList.toggle("oculto", totalDela<=0 || ver==="meus");
+  if(totalDela>0){
+    el("#p-dela-rot").textContent = "Gastos de "+nomeEla();
+    el("#p-dela").textContent = R$(totalDela);
+    el("#p-dela-sub").textContent = fx.saida>0 ? Math.round(totalDela/fx.saida*100)+"% de tudo que saiu" : "";
+  }
+
   // faturas
   const lista = el("#p-faturas");
   if(!S.cartoes.length){
@@ -857,7 +885,6 @@ function renderPainel(){
       const uso = c.limite ? Math.min(100, Math.round(v/c.limite*100)) : 0;
       return '<div class="item"><div class="icone">💳</div>'
         + '<div class="desc"><b>'+esc(c.nome)+'</b><small>vence dia '+esc(c.vencimento)+' · '+ps+' parcela'+(ps===1?"":"s")
-        + ' · <span class="pilula '+classePerfil(c.titular)+'">'+esc(nomePerfil(c.titular))+'</span>'
         + (c.limite? ' · '+uso+'% do limite':'')+'</small></div>'
         + '<div class="num">'+R$(v)+'</div></div>';
     }).join("");
@@ -882,12 +909,12 @@ function renderPainel(){
   // movimento
   const movs = [];
   for(const l of S.lancamentos){
-    if(f && !f(l.perfil)) continue;
+    if(f && !f(l.dela)) continue;
     if(!ativoNoMes(l,mes)) continue;
-    movs.push({tipo:l.tipo, desc:l.desc, cat:l.cat, perfil:l.perfil, valor:l.valor, data:l.data, fixo:l.fixo, ref:l.id, origem:"l"});
+    movs.push({tipo:l.tipo, desc:l.desc, cat:l.cat, dela:l.dela, valor:l.valor, data:l.data, fixo:l.fixo, ref:l.id, origem:"l"});
   }
   for(const p of parcelasDe(mes, f)){
-    movs.push({tipo:"parcela", desc:p.compra.desc, cat:p.compra.cat, perfil:p.compra.perfil, valor:p.valor,
+    movs.push({tipo:"parcela", desc:p.compra.desc, cat:p.compra.cat, dela:p.compra.dela, valor:p.valor,
       data:p.compra.data, extra:p.n+"/"+p.compra.parcelas, ref:p.compra.id, origem:"c"});
   }
   movs.sort((a,b)=> (b.data||"").localeCompare(a.data||""));
@@ -897,8 +924,8 @@ function renderPainel(){
     const ic = m.tipo==="entrada"?"↑":m.tipo==="parcela"?"💳":"↓";
     return '<div class="item"><div class="icone">'+ic+'</div>'
       + '<div class="desc"><b>'+esc(m.desc)+'</b><small>'
-      + (m.cat?esc(m.cat)+" · ":"")
-      + '<span class="pilula '+classePerfil(m.perfil)+'">'+esc(nomePerfil(m.perfil))+'</span>'
+      + (m.cat?esc(m.cat):"")
+      + (m.dela? ' · '+etiqueta(true):"")
       + (m.extra? ' · <span class="mono">'+m.extra+'</span>':"")
       + (m.fixo? ' · fixo':"")
       + '</small></div>'
@@ -909,13 +936,14 @@ function renderPainel(){
 
 function renderLancar(){
   const tipo = el("#seg-tipo").querySelector('[aria-pressed="true"]').dataset.tipo;
-  const cat = el("#f-cat"), perfil = el("#f-perfil"), cartao = el("#f-cartao");
+  const cat = el("#f-cat"), quem = el("#f-quem"), cartao = el("#f-cartao");
   const lista = tipo==="entrada" ? S.config.catsEnt : S.config.cats;
   const catAtual = cat.value;
   cat.innerHTML = lista.map(c=>'<option'+(c===catAtual?" selected":"")+'>'+esc(c)+'</option>').join("");
-  const pAtual = perfil.value || "A";
-  perfil.innerHTML = [["A",nomePerfil("A")],["B",nomePerfil("B")],["N","Nosso (conjunto)"]]
-    .map(o=>'<option value="'+o[0]+'"'+(o[0]===pAtual?" selected":"")+'>'+esc(o[1])+'</option>').join("");
+  const qAtual = quem.value || "eu";
+  quem.innerHTML = [["eu","Eu"],["ela",nomeEla()]]
+    .map(o=>'<option value="'+o[0]+'"'+(o[0]===qAtual?" selected":"")+'>'+esc(o[1])+'</option>').join("");
+  els(".campo-quem").forEach(n=>n.classList.toggle("oculto", tipo==="entrada"));
   const cAtual = cartao.value;
   cartao.innerHTML = S.cartoes.length
     ? S.cartoes.map(c=>'<option value="'+c.id+'"'+(c.id===cAtual?" selected":"")+'>'+esc(c.nome)+'</option>').join("")
@@ -946,10 +974,6 @@ function atualizarPrevia(){
 }
 
 function renderCartoes(){
-  const t = el("#ct-titular");
-  const tv = t.value || "A";
-  t.innerHTML = [["A",nomePerfil("A")],["B",nomePerfil("B")],["N","Nosso"]]
-    .map(o=>'<option value="'+o[0]+'"'+(o[0]===tv?" selected":"")+'>'+esc(o[1])+'</option>').join("");
   const lista = el("#c-lista");
   if(!S.cartoes.length){
     lista.innerHTML = '<div class="vazio"><b>Nenhum cartão ainda</b>Cadastre abaixo para começar a controlar as parcelas.</div>';
@@ -960,8 +984,7 @@ function renderCartoes(){
     const aberto = S.compras.filter(x=>x.cartao===c.id && compSoma(x.compInicio,x.parcelas-1) >= mes).length;
     const uso = c.limite ? Math.min(100, Math.round(fat/c.limite*100)) : null;
     return '<div class="item"><div class="icone">💳</div><div class="desc"><b>'+esc(c.nome)+'</b>'
-      + '<small><span class="pilula '+classePerfil(c.titular)+'">'+esc(nomePerfil(c.titular))+'</span>'
-      + ' · fecha dia '+esc(c.fechamento)+' · vence dia '+esc(c.vencimento)
+      + '<small>fecha dia '+esc(c.fechamento)+' · vence dia '+esc(c.vencimento)
       + (c.limite? ' · limite '+R$(c.limite):'')
       + ' · '+aberto+' compra'+(aberto===1?"":"s")+' em aberto</small>'
       + (uso!=null?'<div class="barra" style="max-width:220px"><i class="'+(uso>80?"neg":uso>60?"wrn":"")+'" style="width:'+uso+'%"></i></div>':'')
@@ -972,7 +995,7 @@ function renderCartoes(){
 
 function renderParcelas(){
   const f = filtroAtual();
-  const abertas = S.compras.filter(c=> (!f || f(c.perfil)) && compSoma(c.compInicio,c.parcelas-1) >= mes);
+  const abertas = S.compras.filter(c=> (!f || f(c.dela)) && compSoma(c.compInicio,c.parcelas-1) >= mes);
   const falta = dividaFutura(mes, f);
   el("#pc-falta").textContent = R$(falta);
   el("#pc-falta").className = "valor " + (falta>0?"neg":"pos");
@@ -986,7 +1009,7 @@ function renderParcelas(){
   el("#pc-juros").className = "valor " + (juros>0?"wrn":"");
   el("#pc-juros-sub").textContent = comJuros ? "em "+comJuros+" compra"+(comJuros===1?"":"s")+" com preço à vista informado" : "informe o preço à vista para eu calcular";
 
-  const todas = S.compras.filter(c=> !f || f(c.perfil)).slice().sort((a,b)=>(b.data||"").localeCompare(a.data||""));
+  const todas = S.compras.filter(c=> !f || f(c.dela)).slice().sort((a,b)=>(b.data||"").localeCompare(a.data||""));
   el("#pc-qtd").textContent = todas.length? todas.length+" compras":"";
   el("#pc-vazio").classList.toggle("oculto", todas.length>0);
   el("#pc-tabela").innerHTML = !todas.length ? "" :
@@ -999,7 +1022,7 @@ function renderParcelas(){
       const cart = S.cartoes.find(x=>x.id===c.cartao);
       return '<tr><td><b>'+esc(c.desc)+'</b>'+(c.cat?' <span class="rot">'+esc(c.cat)+'</span>':'')+'</td>'
         + '<td>'+esc(cart?cart.nome:"—")+'</td>'
-        + '<td><span class="pilula '+classePerfil(c.perfil)+'">'+esc(nomePerfil(c.perfil))+'</span></td>'
+        + '<td>'+(c.dela? etiqueta(true) : '<span style="color:var(--ink-3)">eu</span>')+'</td>'
         + '<td class="mono">'+(atual? atual+"/"+c.parcelas : "a partir de "+compRotulo(c.compInicio,true))+'</td>'
         + '<td class="n">'+R$(valorParcela(c, Math.max(1,atual)))+'</td>'
         + '<td class="n">'+R$(c.valorTotal)+'</td>'
@@ -1107,6 +1130,19 @@ function analisar(){
     });
   }
 
+  if(ver!=="meus"){
+    const fd = fluxo(mes, d=>!!d), td = fd.gas + fd.fat;
+    if(td>0){
+      const tot = fx.saida || 1;
+      out.push({
+        nivel:"info", titulo:"Gastos de "+nomeEla(),
+        texto:"Neste mês são <b>"+R$(td)+"</b>, ou <b>"+Math.round(td/tot*100)+"%</b> de tudo que saiu"
+          + (fd.fat>0? ", sendo "+R$(fd.fat)+" em parcelas do cartão":"")
+          + ". Use o filtro <b>"+esc(nomeEla())+"</b> lá em cima para ver item por item."
+      });
+    }
+  }
+
   let juros=0;
   for(const c of S.compras){ if(c.avista && c.valorTotal>c.avista) juros += c.valorTotal-c.avista; }
   if(juros>0) out.push({nivel:"atencao",titulo:"Juros que você já aceitou",texto:"Somando as compras em que você informou o preço à vista, o parcelamento custou <b>"+R$(juros)+"</b> a mais. É o preço da conveniência — vale conferir se compensou."});
@@ -1152,7 +1188,7 @@ function renderAnalise(){
 function resumoTexto(){
   const f = filtroAtual(), fx = fluxo(mes,f);
   const l = [];
-  l.push("Resumo Nosso Caixa — "+compRotulo(mes)+" (filtro: "+(ver==="tudo"?"tudo":nomePerfil(ver))+")");
+  l.push("Resumo Nosso Caixa — "+compRotulo(mes)+" (filtro: "+rotuloFiltro()+")");
   l.push("Entradas: "+R$(fx.ent)+" | Gastos à vista: "+R$(fx.gas)+" | Faturas: "+R$(fx.fat)+" | Sobra: "+R$(fx.saldo));
   l.push("Dívida de cartão à frente: "+R$(dividaFutura(mes,f))+(ultimaComp()?" (última parcela em "+compRotulo(ultimaComp())+")":""));
   l.push("");
@@ -1161,6 +1197,9 @@ function resumoTexto(){
     const c = compSoma(mes,i), fl = fluxo(c,f);
     l.push(compRotulo(c,true)+" | "+fl.ent.toFixed(2)+" | "+fl.gas.toFixed(2)+" | "+fl.fat.toFixed(2)+" | "+fl.saldo.toFixed(2));
   }
+  l.push("");
+  const fdr = fluxo(mes, d=>!!d);
+  l.push("Gastos de "+nomeEla()+" no mês: "+(fdr.gas+fdr.fat).toFixed(2));
   l.push("");
   l.push("Gastos por categoria (3 meses):");
   gastosPorCategoria(3).forEach(c=>l.push("- "+c.cat+": "+c.valor.toFixed(2)));
@@ -1174,10 +1213,7 @@ function resumoTexto(){
 }
 
 function renderAjustes(){
-  el("#aj-nomeA").value = S.config.nomeA;
-  el("#aj-nomeB").value = S.config.nomeB;
-  el("#aj-pinA").value = S.config.pinA;
-  el("#aj-pinB").value = S.config.pinB;
+  el("#aj-nome-ela").value = S.config.nomeEla || "";
   el("#aj-cats").value = S.config.cats.join("\n");
   el("#aj-cats-ent").value = S.config.catsEnt.join("\n");
 }
@@ -1191,43 +1227,53 @@ function apagar(chave){
 }
 function exemplo(){
   const m = compHoje();
-  const c1 = {id:id(), nome:"Nubank", titular:"A", fechamento:28, vencimento:10, limite:8000};
-  const c2 = {id:id(), nome:"Itaú", titular:"B", fechamento:20, vencimento:5, limite:4000};
+  const c1 = {id:id(), nome:"Nubank", fechamento:28, vencimento:10, limite:8000};
+  const c2 = {id:id(), nome:"Itaú", fechamento:20, vencimento:5, limite:4000};
   S.cartoes = [c1,c2];
   S.lancamentos = [
-    {id:id(),tipo:"entrada",perfil:"A",desc:"Salário",valor:6500,cat:"Salário",data:iso(hoje()),comp:m,fixo:true},
-    {id:id(),tipo:"entrada",perfil:"A",desc:"Pró-labore da sociedade",valor:3200,cat:"Pró-labore",data:iso(hoje()),comp:m,fixo:true},
-    {id:id(),tipo:"entrada",perfil:"B",desc:"Salário",valor:3800,cat:"Salário",data:iso(hoje()),comp:m,fixo:true},
-    {id:id(),tipo:"gasto",perfil:"N",desc:"Aluguel",valor:2200,cat:"Casa",data:iso(hoje()),comp:m,fixo:true},
-    {id:id(),tipo:"gasto",perfil:"N",desc:"Mercado do mês",valor:1450,cat:"Mercado",data:iso(hoje()),comp:m,fixo:false},
-    {id:id(),tipo:"gasto",perfil:"A",desc:"Gasolina",valor:620,cat:"Gasolina",data:iso(hoje()),comp:m,fixo:true},
-    {id:id(),tipo:"gasto",perfil:"A",desc:"Escola do Miguel",valor:980,cat:"Filho",data:iso(hoje()),comp:m,fixo:true},
-    {id:id(),tipo:"gasto",perfil:"B",desc:"Salão",valor:260,cat:"Beleza",data:iso(hoje()),comp:m,fixo:false}
+    {id:id(),tipo:"entrada",dela:false,desc:"Salário",valor:6500,cat:"Salário",data:iso(hoje()),comp:m,fixo:true},
+    {id:id(),tipo:"entrada",dela:false,desc:"Pró-labore da sociedade",valor:3200,cat:"Pró-labore",data:iso(hoje()),comp:m,fixo:true},
+    {id:id(),tipo:"gasto",dela:false,desc:"Aluguel",valor:2200,cat:"Casa",data:iso(hoje()),comp:m,fixo:true},
+    {id:id(),tipo:"gasto",dela:false,desc:"Mercado do mês",valor:1450,cat:"Mercado",data:iso(hoje()),comp:m,fixo:false},
+    {id:id(),tipo:"gasto",dela:false,desc:"Gasolina",valor:620,cat:"Gasolina",data:iso(hoje()),comp:m,fixo:true},
+    {id:id(),tipo:"gasto",dela:false,desc:"Escola do Miguel",valor:980,cat:"Filho",data:iso(hoje()),comp:m,fixo:true},
+    {id:id(),tipo:"gasto",dela:true,desc:"Salão",valor:260,cat:"Beleza",data:iso(hoje()),comp:m,fixo:false},
+    {id:id(),tipo:"gasto",dela:true,desc:"Farmácia",valor:185,cat:"Saúde",data:iso(hoje()),comp:m,fixo:false}
   ];
   S.compras = [
-    {id:id(),perfil:"A",cartao:c1.id,desc:"Pneus do carro",valorTotal:3600,avista:3100,parcelas:6,compInicio:m,cat:"Carro",data:iso(hoje())},
-    {id:id(),perfil:"B",cartao:c2.id,desc:"Vestido e prova",valorTotal:2400,parcelas:8,compInicio:compSoma(m,-2),cat:"Casamento",data:iso(hoje())},
-    {id:id(),perfil:"N",cartao:c1.id,desc:"Geladeira",valorTotal:4800,avista:4200,parcelas:10,compInicio:compSoma(m,-3),cat:"Casa",data:iso(hoje())}
+    {id:id(),dela:false,cartao:c1.id,desc:"Pneus do carro",valorTotal:3600,avista:3100,parcelas:6,compInicio:m,cat:"Carro",data:iso(hoje())},
+    {id:id(),dela:true,cartao:c1.id,desc:"Vestido e prova",valorTotal:2400,parcelas:8,compInicio:compSoma(m,-2),cat:"Casamento",data:iso(hoje())},
+    {id:id(),dela:false,cartao:c2.id,desc:"Geladeira",valorTotal:4800,avista:4200,parcelas:10,compInicio:compSoma(m,-3),cat:"Casa",data:iso(hoje())}
   ];
   agendarSalvar(); render(); torrada("Dados de exemplo carregados.");
 }
 
 /* ===================== eventos ===================== */
 function ligar(){
-  el("#mes-ant").onclick = ()=>{ mes = compSoma(mes,-1); render(); };
-  el("#mes-prox").onclick = ()=>{ mes = compSoma(mes, 1); render(); };
-  el("#btn-hoje").onclick = ()=>{ mes = compHoje(); render(); };
+  el("#mes-ant").onclick = ()=>{ mes = compSoma(mes,-1); abrirPicker(false); render(); };
+  el("#mes-prox").onclick = ()=>{ mes = compSoma(mes, 1); abrirPicker(false); render(); };
+  el("#btn-hoje").onclick = ()=>{ mes = compHoje(); abrirPicker(false); render(); };
+  el("#mes-abre").onclick = e=>{ e.stopPropagation(); abrirPicker(); };
+  el("#ano-ant").onclick = e=>{ e.stopPropagation(); anoPicker--; renderPicker(); };
+  el("#ano-prox").onclick = e=>{ e.stopPropagation(); anoPicker++; renderPicker(); };
+  el("#picker").addEventListener("click", e=>{
+    e.stopPropagation();
+    const b = e.target.closest("button[data-comp]"); if(!b) return;
+    mes = b.dataset.comp; abrirPicker(false); render();
+  });
+  document.addEventListener("click", e=>{
+    if(!el("#picker").classList.contains("oculto") && !e.target.closest("#picker,#mes-abre")) abrirPicker(false);
+  });
+  document.addEventListener("keydown", e=>{ if(e.key==="Escape") abrirPicker(false); });
   el("#fab").onclick = ()=>{ aba = "lancar"; render(); el("#q-texto").focus(); };
 
   el("#abas").addEventListener("click", e=>{
     const b = e.target.closest("button[data-aba]"); if(!b) return;
     aba = b.dataset.aba; render(); window.scrollTo({top:0,behavior:"smooth"});
   });
-  el("#seg-ver").addEventListener("click", async e=>{
+  el("#seg-ver").addEventListener("click", e=>{
     const b = e.target.closest("button[data-ver]"); if(!b) return;
-    const alvo = b.dataset.ver;
-    if(precisaPin(alvo)){ const ok = await pedirPin(alvo); if(!ok) return; }
-    ver = alvo; render();
+    ver = b.dataset.ver; render();
   });
   el("#seg-tipo").addEventListener("click", e=>{
     const b = e.target.closest("button[data-tipo]"); if(!b) return;
@@ -1247,7 +1293,7 @@ function ligar(){
       return;
     }
     const m = e.target.closest(".trilho .m");
-    if(m){ mes = m.dataset.comp; render(); }
+    if(m){ mes = m.dataset.comp; abrirPicker(false); render(); }
   });
 
   // lançamento rápido
@@ -1266,6 +1312,7 @@ function ligar(){
       el("#f-comp").value = "";
     }
     el("#f-fixo").checked = r.fixo;
+    if(r.tipo!=="entrada") el("#f-quem").value = r.dela ? "ela" : "eu";
     atualizarPrevia();
     el("#f-desc").focus();
     torrada("Preenchi o formulário — confira e salve.");
@@ -1302,13 +1349,13 @@ function ligar(){
       if(!cartao){ torrada("Cadastre um cartão antes."); aba="cartoes"; render(); return; }
       const n = Math.max(1, parseInt(el("#f-parcelas").value||"1",10));
       const cart = S.cartoes.find(c=>c.id===cartao);
-      S.compras.push({id:id(), perfil:el("#f-perfil").value, cartao, desc, valorTotal:valor,
+      S.compras.push({id:id(), dela: el("#f-quem").value==="ela", cartao, desc, valorTotal:valor,
         avista:num(el("#f-avista").value)||0, parcelas:n,
         compInicio: el("#f-comp").value || primeiraComp(data, cart),
         cat: el("#f-cat").value, data});
       torrada(n+"x de "+R$(valor/n)+" lançadas.");
     }else{
-      S.lancamentos.push({id:id(), tipo: tipo==="entrada"?"entrada":"gasto", perfil:el("#f-perfil").value,
+      S.lancamentos.push({id:id(), tipo: tipo==="entrada"?"entrada":"gasto", dela: tipo!=="entrada" && el("#f-quem").value==="ela",
         desc, valor, cat:el("#f-cat").value, data, comp:compDe(data), fixo: el("#f-fixo").checked});
       torrada(tipo==="entrada"?"Entrada lançada.":"Gasto lançado.");
     }
@@ -1326,7 +1373,7 @@ function ligar(){
     e.preventDefault();
     const nome = el("#ct-nome").value.trim();
     if(!nome) return;
-    S.cartoes.push({id:id(), nome, titular:el("#ct-titular").value,
+    S.cartoes.push({id:id(), nome,
       fechamento: Math.min(31,Math.max(1,parseInt(el("#ct-fecha").value||"28",10))),
       vencimento: Math.min(31,Math.max(1,parseInt(el("#ct-vence").value||"10",10))),
       limite: num(el("#ct-limite").value)||0});
@@ -1334,13 +1381,9 @@ function ligar(){
     agendarSalvar(); render(); torrada("Cartão cadastrado.");
   });
 
-  el("#aj-salvar-perfis").onclick = ()=>{
-    S.config.nomeA = el("#aj-nomeA").value.trim() || "Perfil 1";
-    S.config.nomeB = el("#aj-nomeB").value.trim() || "Perfil 2";
-    S.config.pinA = el("#aj-pinA").value.replace(/\D/g,"").slice(0,4);
-    S.config.pinB = el("#aj-pinB").value.replace(/\D/g,"").slice(0,4);
-    destravados.A = destravados.B = true;
-    agendarSalvar(); render(); torrada("Perfis salvos.");
+  el("#aj-salvar-nome").onclick = ()=>{
+    S.config.nomeEla = el("#aj-nome-ela").value.trim() || "Ela";
+    agendarSalvar(); render(); torrada("Nome salvo.");
   };
   el("#aj-salvar-cats").onclick = ()=>{
     const a = el("#aj-cats").value.split("\n").map(s=>s.trim()).filter(Boolean);
@@ -1405,7 +1448,6 @@ function iniciar(){
   const embutido = lerEmbutido(), local = lerLocal();
   S = (local && (local.updatedAt||0) > (embutido.updatedAt||0)) ? local : embutido;
   if(local && (local.updatedAt||0) > (embutido.updatedAt||0)) modo = "local";
-  destravados.A = !S.config.pinA; destravados.B = !S.config.pinB;
   try{
     const v = JSON.parse(sessionStorage.getItem("nc:volta")||"null");
     if(v){ aba=v.aba||aba; mes=v.mes||mes; ver=v.ver||ver; sessionStorage.removeItem("nc:volta"); }
