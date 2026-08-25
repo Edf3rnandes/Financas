@@ -226,6 +226,16 @@ tbody tr:hover{background:var(--surface-2)}
 .torrada.ver{opacity:1;transform:translateX(-50%) translateY(-4px)}
 dialog{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);color:var(--ink);padding:0;max-width:min(430px,92vw);width:100%;box-shadow:0 24px 60px -20px rgba(0,0,0,.5)}
 dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
+.modal-cab{display:flex;align-items:flex-start;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface);z-index:2}
+.modal-cab h2{font-size:17px;margin-top:2px}
+.modal-cab .dl-total{margin-left:auto;font-weight:600;font-size:17px;white-space:nowrap;align-self:center;font-variant-numeric:tabular-nums}
+.dl-corpo{max-height:min(62vh,520px);overflow-y:auto}
+#dlg-lista{max-width:min(560px,94vw)}
+.clicavel{cursor:pointer;position:relative}
+.clicavel:hover{border-color:var(--line-forte)}
+.clicavel::after{content:"›";position:absolute;right:14px;top:14px;color:var(--ink-3);font-size:17px;line-height:1}
+.item.clicavel::after{top:50%;transform:translateY(-50%)}
+.item.clicavel{padding-right:30px}
 .modal-corpo{padding:20px}
 .modal-corpo h2{font-size:17px;margin-bottom:5px}
 .modal-corpo p{color:var(--ink-2);font-size:13.5px;margin:0 0 14px}
@@ -274,17 +284,17 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
         <div class="barra"><i id="p-barra" style="width:0"></i></div>
         <div class="rot" style="margin-top:8px" id="p-saldo-sub"></div>
       </div>
-      <div class="card saldo menor">
+      <div class="card saldo menor clicavel" id="card-entrou" role="button" tabindex="0">
         <span class="rot">Entrou</span>
         <div class="valor pos" id="p-entrou">—</div>
         <div class="rot" style="margin-top:8px" id="p-entrou-sub"></div>
       </div>
-      <div class="card saldo menor">
+      <div class="card saldo menor clicavel" id="card-saiu" role="button" tabindex="0">
         <span class="rot">Saiu</span>
         <div class="valor neg" id="p-saiu">—</div>
         <div class="rot" style="margin-top:8px" id="p-saiu-sub"></div>
       </div>
-      <div class="card saldo menor oculto" id="card-dela">
+      <div class="card saldo menor oculto clicavel" id="card-dela" role="button" tabindex="0">
         <span class="rot" id="p-dela-rot">Gastos dela</span>
         <div class="valor" id="p-dela">—</div>
         <div class="rot" style="margin-top:8px" id="p-dela-sub"></div>
@@ -538,6 +548,16 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
       </div>
     </div>
     <div class="card">
+      <div class="card-cab"><h2>Quando a fatura conta no mês</h2></div>
+      <div class="card-corpo">
+        <div class="seg" id="seg-regime" style="width:100%;max-width:420px">
+          <button type="button" data-regime="venc" aria-pressed="true" style="flex:1">No vencimento</button>
+          <button type="button" data-regime="lanc" aria-pressed="false" style="flex:1">No mês que lancei</button>
+        </div>
+        <p style="margin:13px 0 0;color:var(--ink-2);font-size:13.5px;line-height:1.6" id="aj-regime-txt"></p>
+      </div>
+    </div>
+    <div class="card">
       <div class="card-cab"><h2>Categorias</h2></div>
       <div class="card-corpo">
         <div class="campo"><label for="aj-cats">Uma por linha</label><textarea id="aj-cats" rows="6"></textarea></div>
@@ -564,6 +584,18 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
 <button class="fab" id="fab" title="Novo lançamento" aria-label="Novo lançamento">+</button>
 <div class="torrada" id="torrada" role="status" aria-live="polite"></div>
 
+<dialog id="dlg-lista">
+  <div class="modal-cab">
+    <div>
+      <span class="rot" id="dl-sub"></span>
+      <h2 id="dl-titulo">Detalhe</h2>
+    </div>
+    <div class="dl-total mono" id="dl-total"></div>
+    <button type="button" class="btn fantasma mini" id="dl-fechar" aria-label="Fechar">✕</button>
+  </div>
+  <div class="lista dl-corpo" id="dl-lista"></div>
+</dialog>
+
 <dialog id="dlg-conf">
   <form method="dialog" class="modal-corpo">
     <h2 id="conf-titulo">Confirmar</h2>
@@ -578,7 +610,7 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
 
 <div id="root"></div>
 
-<script type="application/json" id="estado">{"v":2,"updatedAt":0,"config":{"nomeEla":"Noiva","cats":["Mercado","Casa","Filho","Pensão","Escola","Carro","Gasolina","Saúde","Impostos","Restaurante","Lazer","Roupas","Assinaturas","Beleza","Casamento","Pets","Outros"],"catsEnt":["Salário","Pró-labore","Dividendos","Freela","Reembolso","Outros"]},"cartoes":[],"lancamentos":[],"compras":[]}</script>
+<script type="application/json" id="estado">{"v":2,"updatedAt":0,"config":{"nomeEla":"Noiva","faturaNoVencimento":true,"cats":["Mercado","Casa","Filho","Pensão","Escola","Carro","Gasolina","Saúde","Impostos","Restaurante","Lazer","Roupas","Assinaturas","Beleza","Casamento","Pets","Outros"],"catsEnt":["Salário","Pró-labore","Dividendos","Freela","Reembolso","Outros"]},"cartoes":[],"lancamentos":[],"compras":[]}</script>
 
 <script id="appjs">
 (function(){
@@ -587,7 +619,7 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
 /* ===================== estado ===================== */
 const PADRAO = {
   v:2, updatedAt:0,
-  config:{nomeEla:"Noiva",
+  config:{nomeEla:"Noiva", faturaNoVencimento:true,
     cats:["Mercado","Casa","Filho","Pensão","Escola","Carro","Gasolina","Saúde","Impostos","Restaurante","Lazer","Roupas","Assinaturas","Beleza","Casamento","Pets","Outros"],
     catsEnt:["Salário","Pró-labore","Dividendos","Freela","Reembolso","Outros"]},
   cartoes:[], lancamentos:[], compras:[]
@@ -678,6 +710,7 @@ function valorParcela(c,n){
   return Math.round((c.valorTotal - base*(c.parcelas-1))*100)/100;
 }
 function deslocCartao(cartaoId){
+  if(S.config.faturaNoVencimento === false) return 0;
   const c = S.cartoes.find(x=>x.id===cartaoId);
   if(!c) return 1;
   return (Number(c.vencimento)||10) <= (Number(c.fechamento)||28) ? 1 : 0;
@@ -1160,6 +1193,49 @@ function importarLinhas(){
   torrada(n+" lançamento"+(n===1?"":"s")+" importado"+(n===1?"":"s")+(pulados? " · "+pulados+" já existia"+(pulados===1?"":"m") : ""));
 }
 
+
+/* ===================== detalhe (drill-down) ===================== */
+function abrirDetalhe(titulo, sub, itens){
+  const dlg = el("#dlg-lista");
+  el("#dl-titulo").textContent = titulo;
+  el("#dl-sub").textContent = sub || "";
+  const tot = itens.reduce((s,i)=>s + (i.sinal==="+" ? i.valor : i.valor), 0);
+  el("#dl-total").textContent = R$(tot);
+  el("#dl-total").className = "dl-total mono " + (itens.length && itens[0].sinal==="+" ? "pos" : "");
+  el("#dl-lista").innerHTML = itens.length ? itens.map(i=>
+    '<div class="item"><div class="icone">'+(i.icone||"•")+'</div>'
+    + '<div class="desc"><b>'+esc(i.titulo)+'</b><small>'+(i.sub||"")+'</small></div>'
+    + '<div class="num'+(i.sinal==="+"?" pos":"")+'">'+(i.sinal||"")+" "+R$(i.valor)+'</div></div>'
+  ).join("") : '<div class="vazio"><b>Nada aqui neste mês</b>Nenhum lançamento se encaixa neste filtro.</div>';
+  dlg.showModal();
+}
+function itensEntradas(comp, f){
+  return S.lancamentos.filter(l=>l.tipo==="entrada" && ativoNoMes(l,comp) && (!f || f(l.dela)))
+    .sort((a,b)=>b.valor-a.valor)
+    .map(l=>({icone:"↑", titulo:l.desc, sub:(l.cat||"")+(l.fixo?" · fixo":"")+(l.dela?" · "+esc(nomeEla()):""), valor:l.valor, sinal:"+"}));
+}
+function itensAVista(comp, f){
+  return S.lancamentos.filter(l=>l.tipo==="gasto" && ativoNoMes(l,comp) && (!f || f(l.dela)))
+    .sort((a,b)=>b.valor-a.valor)
+    .map(l=>({icone:"↓", titulo:l.desc, sub:(l.cat||"")+(l.fixo?" · fixo":"")+(l.dela?" · "+esc(nomeEla()):""), valor:l.valor, sinal:"−"}));
+}
+function itensParcelas(comp, f, filtroCompra){
+  return parcelasPagasEm(comp, f)
+    .filter(p=>!filtroCompra || filtroCompra(p.compra))
+    .sort((a,b)=>b.valor-a.valor)
+    .map(p=>({
+      icone: p.compra.fin ? "🏦" : "💳",
+      titulo: p.compra.desc,
+      sub: (p.compra.cat||"") + " · " + p.n+"/"+p.compra.parcelas
+         + (p.compra.fin ? " · "+rotuloDivida(p.compra) : " · fatura de "+compRotulo(p.faturaDe,true))
+         + (p.compra.dela ? " · "+esc(nomeEla()) : ""),
+      valor: p.valor, sinal:"−"
+    }));
+}
+function itensSaidas(comp, f){
+  return itensAVista(comp,f).concat(itensParcelas(comp,f)).sort((a,b)=>b.valor-a.valor);
+}
+
 /* ===================== render ===================== */
 function render(){
   if(!S) return;
@@ -1253,7 +1329,7 @@ function renderPainel(){
       const doCard = pagas.filter(p=>p.compra.cartao===c.id);
       const ps = doCard.length;
       const de = doCard.length ? doCard[0].faturaDe : compSoma(mes, -deslocCartao(c.id));
-      return '<div class="item"><div class="icone">💳</div>'
+      return '<div class="item clicavel" data-fatura="'+c.id+'"><div class="icone">💳</div>'
         + '<div class="desc"><b>'+esc(c.nome)+'</b><small>'
         + 'fatura de '+compRotulo(de,true)+' · vence '+String(c.vencimento).padStart(2,"0")+'/'+mes.split("-")[1]
         + ' · '+ps+' parcela'+(ps===1?"":"s")+'</small></div>'
@@ -1274,7 +1350,7 @@ function renderPainel(){
       if(v<=0) return "";
       const n = abertas.filter(p=>p.compra.cartao===c.id).length;
       const uso = c.limite ? Math.min(100, Math.round(v/c.limite*100)) : 0;
-      return '<div class="item"><div class="icone">🧾</div>'
+      return '<div class="item clicavel" data-fechando="'+c.id+'"><div class="icone">🧾</div>'
         + '<div class="desc"><b>'+esc(c.nome)+'</b><small>fecha dia '+esc(c.fechamento)
         + ' · vence '+String(c.vencimento).padStart(2,"0")+'/'+compSoma(mes,deslocCartao(c.id)).split("-")[1]
         + ' · '+n+' lançamento'+(n===1?"":"s")
@@ -1686,6 +1762,11 @@ function resumoTexto(){
 }
 
 function renderAjustes(){
+  const venc = S.config.faturaNoVencimento !== false;
+  els("#seg-regime button").forEach(b=>b.setAttribute("aria-pressed", String((b.dataset.regime==="venc")===venc)));
+  el("#aj-regime-txt").innerHTML = venc
+    ? "A compra que você lança na fatura de <b>agosto</b> aparece como saída em <b>setembro</b>, no dia do vencimento — igual ao extrato do banco. É o padrão."
+    : "A compra que você lança em <b>agosto</b> conta como saída em <b>agosto</b> mesmo. Use se você já lança tudo direto no mês em que vai pagar.";
   el("#aj-nome-ela").value = S.config.nomeEla || "";
   el("#aj-cats").value = S.config.cats.join("\n");
   el("#aj-cats-ent").value = S.config.catsEnt.join("\n");
@@ -1742,6 +1823,37 @@ function ligar(){
   });
   document.addEventListener("keydown", e=>{ if(e.key==="Escape") abrirPicker(false); });
   el("#fab").onclick = ()=>{ aba = "lancar"; render(); el("#q-texto").focus(); };
+
+  const abrirCard = q => {
+    const f = filtroAtual();
+    if(q==="entrou") abrirDetalhe("Entradas", cap(compRotulo(mes)), itensEntradas(mes,f));
+    if(q==="saiu") abrirDetalhe("Tudo que saiu", cap(compRotulo(mes)), itensSaidas(mes,f));
+    if(q==="dela") abrirDetalhe("Gastos de "+nomeEla(), cap(compRotulo(mes)),
+      itensAVista(mes, d=>!!d).concat(itensParcelas(mes, d=>!!d)).sort((a,b)=>b.valor-a.valor));
+  };
+  ["entrou","saiu","dela"].forEach(q=>{
+    const n = el("#card-"+q);
+    n.addEventListener("click", ()=>abrirCard(q));
+    n.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); abrirCard(q); } });
+  });
+  el("#dl-fechar").onclick = ()=>el("#dlg-lista").close();
+  el("#p-faturas").addEventListener("click", e=>{
+    const n = e.target.closest("[data-fatura]"); if(!n) return;
+    const c = S.cartoes.find(x=>x.id===n.dataset.fatura); if(!c) return;
+    abrirDetalhe("Fatura do "+c.nome, "vence "+String(c.vencimento).padStart(2,"0")+"/"+mes.split("-")[1]+"/"+mes.split("-")[0],
+      itensParcelas(mes, filtroAtual(), co=>co.cartao===c.id));
+  });
+  el("#p-fechando").addEventListener("click", e=>{
+    const n = e.target.closest("[data-fechando]"); if(!n) return;
+    const c = S.cartoes.find(x=>x.id===n.dataset.fechando); if(!c) return;
+    const f = filtroAtual();
+    const itens = parcelasDe(mes, f).filter(p=>p.compra.cartao===c.id)
+      .sort((a,b)=>b.valor-a.valor)
+      .map(p=>({icone:"🧾", titulo:p.compra.desc,
+        sub:(p.compra.cat||"")+" · "+p.n+"/"+p.compra.parcelas+(p.compra.dela?" · "+esc(nomeEla()):""),
+        valor:p.valor, sinal:"−"}));
+    abrirDetalhe("Fatura fechando · "+c.nome, "você paga em "+compRotulo(compSoma(mes, deslocCartao(c.id))), itens);
+  });
 
   el("#abas").addEventListener("click", e=>{
     const b = e.target.closest("button[data-aba]"); if(!b) return;
@@ -1897,6 +2009,12 @@ function ligar(){
     agendarSalvar(); render(); torrada("Cartão cadastrado.");
   });
 
+  el("#seg-regime").addEventListener("click", e=>{
+    const b = e.target.closest("button[data-regime]"); if(!b) return;
+    S.config.faturaNoVencimento = (b.dataset.regime === "venc");
+    agendarSalvar(); render();
+    torrada(S.config.faturaNoVencimento ? "Fatura passa a contar no vencimento." : "Fatura passa a contar no mês do lançamento.");
+  });
   el("#aj-salvar-nome").onclick = ()=>{
     S.config.nomeEla = el("#aj-nome-ela").value.trim() || "Ela";
     agendarSalvar(); render(); torrada("Nome salvo.");
