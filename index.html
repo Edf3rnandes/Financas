@@ -20,7 +20,7 @@
   --bg:#EEF2F1; --surface:#FFFFFF; --surface-2:#F5F9F8; --surface-3:#E7EEEC;
   --line:#D9E3E1; --line-forte:#BFCECB;
   --ink:#10201E; --ink-2:#4A5F5C; --ink-3:#7E908D;
-  --accent:#0E6E7B; --accent-ink:#FFFFFF; --accent-soft:#DBECEE;
+  --accent:#0E6E7B; --accent-ink:#FFFFFF; --accent-soft:#DBECEE; --accent-2:#63AEB7;
   --pos:#1F7A4D; --pos-soft:#DDEFE4;
   --neg:#B24A32; --neg-soft:#F6E3DD;
   --warn:#96690F; --warn-soft:#F4E9D2;
@@ -33,7 +33,7 @@
     --bg:#0B1312; --surface:#131E1D; --surface-2:#182524; --surface-3:#1F2E2C;
     --line:#263634; --line-forte:#3A4E4B;
     --ink:#E4EDEB; --ink-2:#A2B5B2; --ink-3:#748885;
-    --accent:#48B4BF; --accent-ink:#04201F; --accent-soft:#15302F;
+    --accent:#48B4BF; --accent-ink:#04201F; --accent-soft:#15302F; --accent-2:#27757F;
     --pos:#57C08A; --pos-soft:#142E23;
     --neg:#E5836A; --neg-soft:#33201B;
     --warn:#D9A83F; --warn-soft:#2E2716;
@@ -45,7 +45,7 @@
   --bg:#0B1312; --surface:#131E1D; --surface-2:#182524; --surface-3:#1F2E2C;
   --line:#263634; --line-forte:#3A4E4B;
   --ink:#E4EDEB; --ink-2:#A2B5B2; --ink-3:#748885;
-  --accent:#48B4BF; --accent-ink:#04201F; --accent-soft:#15302F;
+  --accent:#48B4BF; --accent-ink:#04201F; --accent-soft:#15302F; --accent-2:#27757F;
   --pos:#57C08A; --pos-soft:#142E23;
   --neg:#E5836A; --neg-soft:#33201B;
   --warn:#D9A83F; --warn-soft:#2E2716;
@@ -145,6 +145,7 @@ main{max-width:1080px;margin:0 auto;padding:18px 16px 110px}
 .trilho .col{width:100%;height:96px;display:flex;flex-direction:column;justify-content:flex-end;background:var(--surface-2);border-radius:6px;overflow:hidden;border:1px solid var(--line)}
 .trilho .m[data-atual="1"] .col{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 .trilho .fat{background:var(--accent);width:100%}
+.trilho .fin{background:var(--accent-2);width:100%}
 .trilho .fix{background:var(--ink-3);width:100%;opacity:.5}
 .trilho .rot-m{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em}
 .trilho .m[data-atual="1"] .rot-m{color:var(--accent);font-weight:600}
@@ -184,6 +185,14 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:none;
 
 .rapido{display:flex;gap:8px;align-items:stretch}
 .rapido input{flex:1}
+.im-tab td{padding:7px 9px;vertical-align:middle}
+.im-tab th{padding:8px 9px}
+.im-tab input[type="text"]{padding:6px 8px;font-size:13px;min-width:150px}
+.im-tab select{padding:6px 8px;font-size:12.5px;min-width:118px}
+.im-tab input[type="checkbox"]{width:17px;height:17px}
+.im-tab tr.fora{opacity:.42}
+.im-tab .p{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accent);font-weight:600}
+.ajuda-tipo{margin:0 0 14px;font-size:13px;color:var(--ink-2);line-height:1.55;padding:10px 12px;background:var(--surface-2);border-radius:9px;border-left:3px solid var(--accent)}
 .dica-parse{font-size:12.5px;color:var(--ink-3);margin-top:8px;line-height:1.55}
 .dica-parse code{background:var(--surface-3);padding:1.5px 5px;border-radius:4px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--ink-2)}
 
@@ -293,6 +302,7 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
         <div class="trilho" id="p-trilho"></div>
         <div class="legenda">
           <span><i style="background:var(--accent)"></i>Parcelas do cartão</span>
+          <span id="leg-fin" class="oculto"><i style="background:var(--accent-2)"></i>Parcelas sem cartão</span>
           <span><i style="background:var(--ink-3);opacity:.5"></i>Gastos fixos</span>
         </div>
       </div>
@@ -327,10 +337,12 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
         <div class="seg" id="seg-tipo">
           <button type="button" data-tipo="gasto" aria-pressed="true">Gasto</button>
           <button type="button" data-tipo="cartao" aria-pressed="false">Cartão</button>
+          <button type="button" data-tipo="fin" aria-pressed="false">Parcelado</button>
           <button type="button" data-tipo="entrada" aria-pressed="false">Entrada</button>
         </div>
       </div>
       <div class="card-corpo">
+        <p class="ajuda-tipo" id="ajuda-tipo"></p>
         <form id="form-lanc" autocomplete="off">
           <div class="linha-campos">
             <div class="campo" style="grid-column:1/-1"><label for="f-desc">Descrição</label><input id="f-desc" required placeholder="Mercado do mês"></div>
@@ -341,11 +353,19 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
             <div class="campo"><label for="f-cat">Categoria</label><select id="f-cat"></select></div>
             <div class="campo campo-quem"><label for="f-quem">Quem gastou</label><select id="f-quem"><option value="eu">Eu</option><option value="ela">Ela</option></select></div>
           </div>
-          <div class="linha-campos linha-cartao oculto" style="margin-top:11px">
-            <div class="campo"><label for="f-cartao">Cartão</label><select id="f-cartao"></select></div>
-            <div class="campo"><label for="f-parcelas">Parcelas</label><input id="f-parcelas" class="mono" type="number" min="1" max="99" value="1"></div>
-            <div class="campo"><label for="f-avista">Preço à vista (opcional)</label><input id="f-avista" class="mono" inputmode="decimal" placeholder="para calcular juros"></div>
-            <div class="campo"><label for="f-comp">1ª parcela em</label><input id="f-comp" type="month"></div>
+          <div class="linha-campos linha-parc oculto" style="margin-top:11px">
+            <div class="campo campo-cartao"><label for="f-cartao">Cartão</label><select id="f-cartao"></select></div>
+            <div class="campo campo-tipodiv"><label for="f-tipodiv">Tipo</label><select id="f-tipodiv">
+              <option value="financiamento">Financiamento</option>
+              <option value="emprestimo">Empréstimo</option>
+              <option value="imposto">Imposto parcelado</option>
+              <option value="consorcio">Consórcio</option>
+              <option value="outro">Outro carnê</option>
+            </select></div>
+            <div class="campo campo-atual"><label for="f-atual">Estou na parcela</label><input id="f-atual" class="mono" type="number" min="1" max="480" value="1"></div>
+            <div class="campo campo-parcelas"><label for="f-parcelas" id="f-parcelas-rot">Parcelas</label><input id="f-parcelas" class="mono" type="number" min="1" max="480" value="1"></div>
+            <div class="campo campo-avista"><label for="f-avista" id="f-avista-rot">Preço à vista (opcional)</label><input id="f-avista" class="mono" inputmode="decimal" placeholder="para calcular juros"></div>
+            <div class="campo campo-comp"><label for="f-comp">1ª parcela em</label><input id="f-comp" type="month"></div>
           </div>
           <div class="linha-campos linha-fixo" style="margin-top:11px">
             <label class="check"><input type="checkbox" id="f-fixo"> <span id="f-fixo-rot">Repete todo mês (fixo)</span></label>
@@ -402,9 +422,9 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
       </div>
     </div>
     <div class="card">
-      <div class="card-cab"><h2>Compras parceladas</h2><span class="rot" id="pc-qtd"></span></div>
+      <div class="card-cab"><h2>Parcelas em aberto</h2><span class="rot" id="pc-qtd"></span></div>
       <div class="rolagem"><table id="pc-tabela"></table></div>
-      <div class="vazio oculto" id="pc-vazio"><b>Nenhuma compra parcelada</b>Lance uma compra no cartão na aba Lançar.</div>
+      <div class="vazio oculto" id="pc-vazio"><b>Nada parcelado</b>Lance uma compra no cartão ou um financiamento na aba Lançar.</div>
     </div>
   </section>
 
@@ -447,6 +467,44 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
         </p>
         <button type="button" class="btn" id="an-copiar">Copiar resumo</button>
         <textarea id="an-resumo" rows="8" class="mono oculto" style="margin-top:12px;font-size:12px"></textarea>
+      </div>
+    </div>
+  </section>
+
+  <!-- IMPORTAR -->
+  <section class="vista" id="v-importar">
+    <div class="card">
+      <div class="card-cab"><h2>Importar extrato do cartão</h2></div>
+      <div class="card-corpo">
+        <div class="linha-campos">
+          <div class="campo"><label for="im-cartao">Cartão</label><select id="im-cartao"></select></div>
+          <div class="campo"><label for="im-comp">Fatura de</label><input id="im-comp" type="month"></div>
+        </div>
+        <div class="campo" style="margin-top:11px">
+          <label for="im-texto">Cole as linhas do extrato</label>
+          <textarea id="im-texto" rows="7" class="mono" style="font-size:12.5px" placeholder="12/08  MERCADO EXTRA  R$ 150,00&#10;10/08  POSTO SHELL  R$ 220,00&#10;05/08  MAGALU  Parcela 3/10  R$ 189,90"></textarea>
+        </div>
+        <div class="acoes">
+          <button type="button" class="btn" id="im-ler">Ler extrato</button>
+          <label class="btn fantasma" for="im-arquivo">Abrir arquivo</label>
+          <input type="file" id="im-arquivo" accept=".csv,.ofx,.qfx,.txt,text/plain" class="oculto">
+          <button type="button" class="btn fantasma" id="im-limpar">Limpar</button>
+        </div>
+        <div class="dica-parse">
+          Serve o texto copiado da tela do app, planilha <b>CSV</b> ou arquivo <b>OFX</b>.
+          Pagamento de fatura, total e limite são ignorados sozinhos.
+          Quando a linha traz <code>3/10</code>, eu monto o parcelamento inteiro — não só a parcela do mês.
+        </div>
+      </div>
+    </div>
+    <div class="card oculto" id="im-resultado">
+      <div class="card-cab"><h2>Confira antes de importar</h2><span class="rot" id="im-qtd"></span></div>
+      <div class="rolagem"><table id="im-tabela"></table></div>
+      <div class="card-corpo" style="border-top:1px solid var(--line)">
+        <div class="acoes" style="margin-top:0">
+          <button type="button" class="btn" id="im-confirmar">Importar selecionados</button>
+          <button type="button" class="btn fantasma" id="im-marcar">Inverter seleção</button>
+        </div>
       </div>
     </div>
   </section>
@@ -507,7 +565,7 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
 
 <div id="root"></div>
 
-<script type="application/json" id="estado">{"v":2,"updatedAt":0,"config":{"nomeEla":"Noiva","cats":["Mercado","Casa","Filho","Carro","Gasolina","Saúde","Educação","Restaurante","Lazer","Roupas","Assinaturas","Beleza","Casamento","Pets","Outros"],"catsEnt":["Salário","Pró-labore","Dividendos","Freela","Reembolso","Outros"]},"cartoes":[],"lancamentos":[],"compras":[]}</script>
+<script type="application/json" id="estado">{"v":2,"updatedAt":0,"config":{"nomeEla":"Noiva","cats":["Mercado","Casa","Filho","Pensão","Escola","Carro","Gasolina","Saúde","Impostos","Restaurante","Lazer","Roupas","Assinaturas","Beleza","Casamento","Pets","Outros"],"catsEnt":["Salário","Pró-labore","Dividendos","Freela","Reembolso","Outros"]},"cartoes":[],"lancamentos":[],"compras":[]}</script>
 
 <script id="appjs">
 (function(){
@@ -517,7 +575,7 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
 const PADRAO = {
   v:2, updatedAt:0,
   config:{nomeEla:"Noiva",
-    cats:["Mercado","Casa","Filho","Carro","Gasolina","Saúde","Educação","Restaurante","Lazer","Roupas","Assinaturas","Beleza","Casamento","Pets","Outros"],
+    cats:["Mercado","Casa","Filho","Pensão","Escola","Carro","Gasolina","Saúde","Impostos","Restaurante","Lazer","Roupas","Assinaturas","Beleza","Casamento","Pets","Outros"],
     catsEnt:["Salário","Pró-labore","Dividendos","Freela","Reembolso","Outros"]},
   cartoes:[], lancamentos:[], compras:[]
 };
@@ -539,6 +597,7 @@ function normaliza(e){
   const migra = r => { if(r && r.dela===undefined){ r.dela = (r.perfil === "B"); delete r.perfil; } return r; };
   s.lancamentos.forEach(migra); s.compras.forEach(migra);
   s.cartoes.forEach(c=>{ if(c && "titular" in c) delete c.titular; });
+  ["Pensão","Escola","Impostos"].forEach(c=>{ if(s.config.cats.indexOf(c)<0) s.config.cats.push(c); });
   s.v = 2;
   return s;
 }
@@ -595,6 +654,8 @@ function torrada(t){
   clearTimeout(timerTorrada); timerTorrada = setTimeout(()=>n.classList.remove("ver"), 2600);
 }
 function nomeEla(){ return S.config.nomeEla || "Ela"; }
+const DIVIDAS = {financiamento:"Financiamento", emprestimo:"Empréstimo", imposto:"Imposto", consorcio:"Consórcio", outro:"Carnê"};
+function rotuloDivida(c){ return DIVIDAS[c && c.tipoDiv] || "Financiamento"; }
 function etiqueta(dela){ return dela ? '<span class="pilula b">'+esc(nomeEla())+'</span>' : ''; }
 
 /* ===================== regras de negócio ===================== */
@@ -615,6 +676,12 @@ function parcelasDe(comp, filtro){
 function totalParcelas(comp, filtro){
   return parcelasDe(comp, filtro).reduce((s,p)=>s+p.valor,0);
 }
+function totalCartao(comp, filtro){
+  return parcelasDe(comp, filtro).filter(p=>!p.compra.fin).reduce((s,p)=>s+p.valor,0);
+}
+function totalFin(comp, filtro){
+  return parcelasDe(comp, filtro).filter(p=>p.compra.fin).reduce((s,p)=>s+p.valor,0);
+}
 function faturaCartao(cartaoId, comp, filtro){
   return parcelasDe(comp, filtro).filter(p=>p.compra.cartao===cartaoId).reduce((s,p)=>s+p.valor,0);
 }
@@ -630,12 +697,14 @@ function fluxo(comp, filtro){
     if(l.tipo==="entrada") ent += l.valor;
     else { gas += l.valor; if(l.fixo) fixos += l.valor; }
   }
-  const fat = totalParcelas(comp, filtro);
-  return {ent, gas, fat, fixos, saida:gas+fat, saldo: ent-gas-fat};
+  const fat = totalCartao(comp, filtro), fin = totalFin(comp, filtro);
+  return {ent, gas, fat, fin, fixos, saida:gas+fat+fin, saldo: ent-gas-fat-fin};
 }
-function ultimaComp(){
+function ultimaComp(so){
   let u = null;
   for(const c of S.compras){
+    if(so==="cartao" && c.fin) continue;
+    if(so==="fin" && !c.fin) continue;
     const f = compSoma(c.compInicio, c.parcelas-1);
     if(!u || f>u) u = f;
   }
@@ -757,7 +826,7 @@ async function carregarNuvem(){
 /* ===================== leitor de texto ===================== */
 function interpretar(t){
   const txt = " " + String(t||"").toLowerCase().trim() + " ";
-  const r = {tipo:"gasto", parcelas:1, cartao:null, cat:null, valor:0, desc:"", fixo:false, dela:false};
+  const r = {tipo:"gasto", parcelas:1, cartao:null, cat:null, valor:0, desc:"", fixo:false, dela:false, tipoDiv:"financiamento"};
   let resto = txt;
 
   const mp = resto.match(/(\d{1,2})\s*(?:x|vezes|parcelas?)\b/);
@@ -778,21 +847,270 @@ function interpretar(t){
   }
   if(/\b(todo m[eê]s|mensal|fixo|fixa|assinatura|aluguel)\b/.test(resto)) r.fixo = true;
   if(/\b(ela|dela|noiva|esposa|mulher|minha noiva)\b/.test(resto)) r.dela = true;
+  if(/\b(financiamento|financiado|consignado|empr[eé]stimo|presta[cç][aã]o|cons[oó]rcio|credi[aá]rio|carn[eê])\b/.test(resto)){
+    r.tipo = "fin"; r.cartao = null;
+    r.tipoDiv = /cons[oó]rcio/.test(resto) ? "consorcio" : /consignado|empr/.test(resto) ? "emprestimo" : "financiamento";
+  }
+  if(/\b(imposto|impostos|iptu|ipva|darf|das|simples nacional|receita federal|inss|licenciamento)\b/.test(resto)){
+    r.tipo = "fin"; r.cartao = null; r.tipoDiv = "imposto"; if(!r.cat) r.cat = "Impostos";
+  }
+  if(/\b(pens[aã]o|aliment[íi]cia)\b/.test(resto)){ r.tipo = "gasto"; r.fixo = true; if(!r.cat) r.cat = "Pensão"; }
+  if(/\b(escola|col[eé]gio|mensalidade|creche)\b/.test(resto)){ r.fixo = true; if(!r.cat) r.cat = "Escola"; }
 
   const lista = r.tipo==="entrada" ? S.config.catsEnt : S.config.cats;
-  for(const c of lista){
+  if(!r.cat) for(const c of lista){
     const n = c.toLowerCase();
     if(resto.indexOf(n) > -1){ r.cat = c; break; }
   }
   if(!r.cat){
-    const sin = {"mercado":"Mercado","supermercado":"Mercado","feira":"Mercado","gasolina":"Gasolina","combustível":"Gasolina","combustivel":"Gasolina","posto":"Gasolina","uber":"Carro","carro":"Carro","oficina":"Carro","escola":"Educação","creche":"Filho","fralda":"Filho","filho":"Filho","remédio":"Saúde","remedio":"Saúde","farmácia":"Saúde","farmacia":"Saúde","médico":"Saúde","medico":"Saúde","restaurante":"Restaurante","ifood":"Restaurante","lanche":"Restaurante","aluguel":"Casa","luz":"Casa","água":"Casa","agua":"Casa","internet":"Casa","netflix":"Assinaturas","spotify":"Assinaturas","academia":"Beleza","salão":"Beleza","salao":"Beleza","roupa":"Roupas","casamento":"Casamento","festa":"Casamento","pet":"Pets","salário":"Salário","salario":"Salário","pró-labore":"Pró-labore","prolabore":"Pró-labore"};
+    const sin = {"mercado":"Mercado","supermercado":"Mercado","feira":"Mercado","gasolina":"Gasolina","combustível":"Gasolina","combustivel":"Gasolina","posto":"Gasolina","uber":"Carro","carro":"Carro","oficina":"Carro","escola":"Escola","colégio":"Escola","creche":"Filho","fralda":"Filho","filho":"Filho","pensão":"Pensão","pensao":"Pensão","iptu":"Impostos","ipva":"Impostos","darf":"Impostos","imposto":"Impostos","remédio":"Saúde","remedio":"Saúde","farmácia":"Saúde","farmacia":"Saúde","médico":"Saúde","medico":"Saúde","restaurante":"Restaurante","ifood":"Restaurante","lanche":"Restaurante","aluguel":"Casa","luz":"Casa","água":"Casa","agua":"Casa","internet":"Casa","netflix":"Assinaturas","spotify":"Assinaturas","academia":"Beleza","salão":"Beleza","salao":"Beleza","roupa":"Roupas","casamento":"Casamento","festa":"Casamento","pet":"Pets","salário":"Salário","salario":"Salário","pró-labore":"Pró-labore","prolabore":"Pró-labore"};
     for(const k in sin){ if(resto.indexOf(k)>-1){ r.cat = sin[k]; break; } }
   }
-  r.desc = resto.replace(/\b(gastei|gastou|gastaram|paguei|pagou|comprei|comprou|foi|a|o|as|os|um|uma|no|na|em|de|do|da|com|por|reais|r\$|x|vezes|parcelas?|cartão|cartao|hoje|ontem|todo|todos|m[eê]s|mensal|fixo|fixa|ela|dela|noiva|esposa|mulher)\b/g," ")
+  r.desc = resto.replace(/\b(gastei|gastou|gastaram|paguei|pagou|comprei|comprou|foi|a|o|as|os|um|uma|no|na|em|de|do|da|com|por|reais|r\$|x|vezes|parcelas?|cartão|cartao|hoje|ontem|todo|todos|m[eê]s|mensal|fixo|fixa|ela|dela|noiva|esposa|mulher|presta[cç][aã]o)\b/g," ")
                 .replace(/\s+/g," ").trim();
   if(r.desc) r.desc = r.desc.charAt(0).toUpperCase()+r.desc.slice(1);
   if(!r.desc) r.desc = r.cat || (r.tipo==="entrada"?"Entrada":"Gasto");
   return r;
+}
+
+
+/* ===================== importador de extrato ===================== */
+let impLinhas = [];
+const IGNORAR_RX = /(pagamento (recebido|de fatura|efetuado)|pagto|total da fatura|saldo (anterior|em aberto)|limite (dispon|total)|encargos rotativo|valor (total|m[ií]nimo)|fatura (fechada|anterior)|d[eé]bito autom|estorno|cr[eé]dito de atraso|desconto|iof|juros de|multa)/i;
+const MESES_ABREV = {jan:1,fev:2,mar:3,abr:4,mai:5,jun:6,jul:7,ago:8,set:9,out:10,nov:11,dez:12};
+
+function moeda(t){
+  let x = String(t).trim().replace(/[R$\s]/gi,"").replace(/^\+/,"");
+  const neg = /^-/.test(x) || /^\(.*\)$/.test(x);
+  x = x.replace(/[()-]/g,"");
+  if(/,\d{1,2}$/.test(x)) x = x.replace(/\./g,"").replace(",",".");
+  else if(/\.\d{1,2}$/.test(x)) x = x.replace(/,/g,"");
+  else x = x.replace(/[.,]/g,"");
+  const v = parseFloat(x);
+  return isFinite(v) ? (neg ? -v : v) : NaN;
+}
+function acharData(txt, compRef){
+  const ano0 = Number(compRef.split("-")[0]), mes0 = Number(compRef.split("-")[1]);
+  let m = txt.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return m[1]+"-"+m[2]+"-"+m[3];
+  m = txt.match(/(\d{8})(?!\d)/);
+  if(m && Number(m[1].slice(0,4))>1990) return m[1].slice(0,4)+"-"+m[1].slice(4,6)+"-"+m[1].slice(6,8);
+  m = txt.match(/(\d{1,2})[\/.-](\d{1,2})(?:[\/.-](\d{2,4}))?/);
+  if(m){
+    let a = m[3] ? Number(m[3]) : ano0;
+    if(a < 100) a += 2000;
+    const mm = Number(m[2]), dd = Number(m[1]);
+    if(mm>=1 && mm<=12 && dd>=1 && dd<=31){
+      if(!m[3] && mm > mes0 + 1) a = ano0 - 1;
+      return a+"-"+String(mm).padStart(2,"0")+"-"+String(dd).padStart(2,"0");
+    }
+  }
+  m = txt.match(/(\d{1,2})\s*(?:de\s*)?(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)/i);
+  if(m){
+    const mm = MESES_ABREV[m[2].toLowerCase()];
+    let a = ano0; if(mm > mes0 + 1) a = ano0 - 1;
+    return a+"-"+String(mm).padStart(2,"0")+"-"+String(Number(m[1])).padStart(2,"0");
+  }
+  return null;
+}
+function pareceData(t){
+  const x = String(t).trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(x) || /^\d{8}$/.test(x)
+    || /^\d{1,2}[\/.-]\d{1,2}([\/.-]\d{2,4})?$/.test(x)
+    || /^\d{1,2}\s*(?:de\s*)?(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\w*\.?(\s*(?:de\s*)?\d{2,4})?$/i.test(x);
+}
+function tirarParcela(desc){
+  let a = 0, t = 0;
+  const mp = desc.match(/(?:parcela|parc\.?)\s*(\d{1,2})\s*(?:\/|\s+de\s+)\s*(\d{1,2})|\(\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*\)|(?:^|\s)(\d{1,2})\s*\/\s*(\d{1,2})(?=\s|$)/i);
+  if(mp){
+    const n1 = Number(mp[1]||mp[3]||mp[5]), n2 = Number(mp[2]||mp[4]||mp[6]);
+    if(n2>1 && n2<=99 && n1>=1 && n1<=n2){
+      a = n1; t = n2;
+      desc = desc.replace(mp[0]," ").replace(/\bparcela\b|\bparc\.?\b/gi," ");
+    }
+  }
+  desc = desc.replace(/\s{2,}/g," ").replace(/^[\s\-–|•]+|[\s\-–|•]+$/g,"").trim();
+  return {desc, a, t};
+}
+function categoriaDe(desc){
+  const t = " "+desc.toLowerCase()+" ";
+  for(const c of S.config.cats){ if(t.indexOf(c.toLowerCase())>-1) return c; }
+  const sin = {"mercado":"Mercado","supermerc":"Mercado","atacad":"Mercado","hortifruti":"Mercado","padaria":"Mercado","assai":"Mercado","carrefour":"Mercado","extra ":"Mercado",
+    "posto":"Gasolina","ipiranga":"Gasolina","shell":"Gasolina","petrobr":"Gasolina","combust":"Gasolina",
+    "uber":"Carro","99app":"Carro","99 ":"Carro","estacion":"Carro","pedagio":"Carro","pedágio":"Carro","oficina":"Carro","autopec":"Carro","pneu":"Carro",
+    "ifood":"Restaurante","rappi":"Restaurante","restaur":"Restaurante","lanchon":"Restaurante","burger":"Restaurante","pizza":"Restaurante","cafe":"Restaurante","bar ":"Restaurante",
+    "farmac":"Saúde","farmác":"Saúde","drogar":"Saúde","droga r":"Saúde","laborat":"Saúde","clinic":"Saúde","clínic":"Saúde","hospital":"Saúde","odonto":"Saúde","psic":"Saúde",
+    "netflix":"Assinaturas","spotify":"Assinaturas","disney":"Assinaturas","amazon prime":"Assinaturas","youtube":"Assinaturas","google":"Assinaturas","apple.com":"Assinaturas","icloud":"Assinaturas","hbo":"Assinaturas","globoplay":"Assinaturas",
+    "escola":"Escola","colegio":"Escola","colégio":"Escola","mensalidade":"Escola","creche":"Escola",
+    "salao":"Beleza","salão":"Beleza","barbear":"Beleza","academia":"Beleza","smart fit":"Beleza","manicure":"Beleza","estetic":"Beleza",
+    "renner":"Roupas","riachuelo":"Roupas","zara":"Roupas","c&a":"Roupas","calcad":"Roupas","shein":"Roupas",
+    "petz":"Pets","cobasi":"Pets","veterin":"Pets",
+    "energia":"Casa","enel":"Casa","cagepa":"Casa","sanea":"Casa","vivo":"Casa","claro":"Casa","tim ":"Casa","internet":"Casa","aluguel":"Casa","condominio":"Casa","condomínio":"Casa","leroy":"Casa","magalu":"Casa","casas bahia":"Casa","americanas":"Casa",
+    "ipva":"Impostos","iptu":"Impostos","darf":"Impostos","detran":"Impostos","licenc":"Impostos",
+    "cinema":"Lazer","ingresso":"Lazer","viagem":"Lazer","hotel":"Lazer","airbnb":"Lazer","latam":"Lazer","gol ":"Lazer","azul ":"Lazer"};
+  for(const k in sin){ if(t.indexOf(k)>-1) return sin[k]; }
+  return "Outros";
+}
+function lerOfx(txt){
+  const out = [];
+  const blocos = txt.split(/<STMTTRN>/i).slice(1);
+  for(const b of blocos){
+    const pega = tag => { const m = b.match(new RegExp("<"+tag+">([^<\r\n]*)","i")); return m ? m[1].trim() : ""; };
+    const val = moeda(pega("TRNAMT"));
+    const desc = (pega("MEMO") || pega("NAME") || "").trim();
+    const dt = pega("DTPOSTED").slice(0,8);
+    if(!isFinite(val) || !desc) continue;
+    out.push({bruto: desc, data: dt.length===8 ? dt.slice(0,4)+"-"+dt.slice(4,6)+"-"+dt.slice(6,8) : null, valor: val, credito: val>0});
+  }
+  return out;
+}
+function fatiar(linha){
+  if(linha.indexOf(";")>-1) return linha.split(";");
+  if(linha.indexOf("\t")>-1) return linha.split("\t");
+  const virgulas = (linha.match(/,/g)||[]).length;
+  if(virgulas>=2 && !/\d,\d{2}(\D|$)/.test(linha)) return linha.split(",");
+  return null;
+}
+function soValor(l){
+  return /^[-+(]?\s*R?\$?\s*\d{1,3}(?:\.\d{3})*(?:,\d{2})?\)?$/.test(l) || /^[-+(]?\s*R?\$?\s*\d+[.,]\d{2}\)?$/.test(l);
+}
+function lerBlocos(texto, compRef){
+  const out = [];
+  let desc = [], data = null;
+  for(const cru of texto.split(/\r?\n/)){
+    const linha = cru.trim();
+    if(!linha) continue;
+    if(soValor(linha)){
+      const valor = moeda(linha);
+      const txt = desc.join(" ").replace(/\s{2,}/g," ").trim();
+      if(isFinite(valor) && valor!==0 && txt) out.push(montarLinha(txt, valor, data, compRef));
+      desc = []; data = null;
+      continue;
+    }
+    if(pareceData(linha)){ data = acharData(linha, compRef) || data; continue; }
+    desc.push(linha);
+    if(desc.length > 4) desc.shift();
+  }
+  return out;
+}
+function lerExtrato(texto, compRef){
+  if(/<STMTTRN>/i.test(texto)) return lerOfx(texto).map(r=>montarLinha(r.bruto, Math.abs(r.valor), r.data, compRef, r.credito));
+  const porLinha = lerLinhas(texto, compRef);
+  const soltos = texto.split(/\r?\n/).map(l=>l.trim()).filter(soValor).length;
+  if(soltos >= 2 && porLinha.length < soltos){
+    const blocos = lerBlocos(texto, compRef);
+    if(blocos.length > porLinha.length) return blocos;
+  }
+  return porLinha;
+}
+function lerLinhas(texto, compRef){
+  const linhas = texto.split(/\r?\n/);
+  const out = [];
+  for(const cru of linhas){
+    const linha = cru.trim();
+    if(!linha || linha.length < 5) continue;
+    if(/^(data|date|título|titulo|descri|lançamento|valor|categoria)/i.test(linha) && !/\d,\d{2}|\d\.\d{2}/.test(linha)) continue;
+    let desc = "", valor = NaN, data = null;
+    const campos = fatiar(linha);
+    if(campos && campos.length>=2){
+      const limpos = campos.map(c=>c.trim().replace(/^"|"$/g,""));
+      let iVal = -1;
+      for(let i=limpos.length-1;i>=0;i--){
+        if(/^[-+(]?\s*R?\$?\s*\d[\d.,]*\)?$/.test(limpos[i]) && /[.,]\d{2}$/.test(limpos[i])){ iVal = i; break; }
+      }
+      if(iVal<0) for(let i=limpos.length-1;i>=0;i--){ const v=moeda(limpos[i]); if(isFinite(v)&&v!==0){ iVal=i; break; } }
+      if(iVal<0) continue;
+      valor = moeda(limpos[iVal]);
+      for(let i=0;i<limpos.length;i++){
+        if(i===iVal) continue;
+        if(!data && pareceData(limpos[i])){ data = acharData(limpos[i], compRef); continue; }
+        if(limpos[i].length > desc.length) desc = limpos[i];
+      }
+    }else{
+      const mv = linha.match(/-?\s*R?\$?\s*\d{1,3}(?:\.\d{3})*,\d{2}|-?\s*R?\$?\s*\d+[.,]\d{2}/g);
+      if(!mv) continue;
+      valor = moeda(mv[mv.length-1]);
+      let resto = linha.replace(mv[mv.length-1], " ");
+      const inicio = resto.match(/^\s*(\d{4}-\d{2}-\d{2}|\d{1,2}[\/.-]\d{1,2}(?:[\/.-]\d{2,4})?|\d{1,2}\s*(?:de\s*)?(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\w*\.?(?:\s*(?:de\s*)?\d{2,4})?)\s+/i);
+      if(inicio){ data = acharData(inicio[1], compRef); resto = resto.slice(inicio[0].length); }
+      else {
+        const completo = resto.match(/\d{4}-\d{2}-\d{2}|\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}/);
+        if(completo){ data = acharData(completo[0], compRef); resto = resto.replace(completo[0], " "); }
+      }
+      desc = resto;
+    }
+    desc = desc.replace(/\s{2,}/g," ").replace(/^[\s\-–|•]+|[\s\-–|•]+$/g,"").trim();
+    if(!desc || !isFinite(valor) || valor===0) continue;
+    out.push(montarLinha(desc, valor, data, compRef));
+  }
+  return out;
+}
+function montarLinha(desc, valor, data, compRef, forcar){
+  const pc = tirarParcela(desc);
+  const parcAtual = pc.a, parcTotal = pc.t;
+  desc = pc.desc;
+  const ignorar = !!forcar || IGNORAR_RX.test(desc) || valor < 0;
+  return {
+    usar: !ignorar, desc: desc || "Sem descrição", valor: Math.abs(valor),
+    data: data || (compRef+"-15"), parcAtual, parcTotal,
+    cat: categoriaDe(desc), dela: false, ignorar
+  };
+}
+
+function renderImportar(){
+  const sel = el("#im-cartao"), atual = sel.value;
+  sel.innerHTML = S.cartoes.length
+    ? S.cartoes.map(c=>'<option value="'+c.id+'"'+(c.id===atual?" selected":"")+'>'+esc(c.nome)+'</option>').join("")
+    : '<option value="">cadastre um cartão primeiro</option>';
+  if(!el("#im-comp").value) el("#im-comp").value = mes;
+  renderImpTabela();
+}
+function renderImpTabela(){
+  const box = el("#im-resultado");
+  if(!impLinhas.length){ box.classList.add("oculto"); return; }
+  box.classList.remove("oculto");
+  const usados = impLinhas.filter(l=>l.usar);
+  const soma = usados.reduce((s,l)=>s + (l.parcTotal>1 ? l.valor : l.valor), 0);
+  el("#im-qtd").textContent = usados.length+" de "+impLinhas.length+" · "+R$(soma)+" neste mês";
+  const opcoes = c => S.config.cats.map(x=>'<option'+(x===c?" selected":"")+'>'+esc(x)+'</option>').join("");
+  el("#im-tabela").className = "im-tab";
+  el("#im-tabela").innerHTML =
+    '<thead><tr><th></th><th>Descrição</th><th>Categoria</th><th>Parcela</th><th style="text-align:right">Valor</th><th>'+esc(nomeEla())+'</th></tr></thead><tbody>'
+    + impLinhas.map((l,i)=>
+      '<tr class="'+(l.usar?"":"fora")+'">'
+      + '<td><input type="checkbox" data-imp="usar" data-i="'+i+'"'+(l.usar?" checked":"")+' aria-label="Importar esta linha"></td>'
+      + '<td><input type="text" data-imp="desc" data-i="'+i+'" value="'+esc(l.desc)+'"></td>'
+      + '<td><select data-imp="cat" data-i="'+i+'">'+opcoes(l.cat)+'</select></td>'
+      + '<td class="p">'+(l.parcTotal>1 ? l.parcAtual+"/"+l.parcTotal : "—")+'</td>'
+      + '<td class="n">'+R$(l.valor)+'</td>'
+      + '<td><input type="checkbox" data-imp="dela" data-i="'+i+'"'+(l.dela?" checked":"")+' aria-label="Gasto de outra pessoa"></td>'
+      + '</tr>').join("")
+    + '</tbody>';
+}
+function importarLinhas(){
+  const cartao = el("#im-cartao").value;
+  if(!cartao){ torrada("Escolha o cartão antes."); return; }
+  const comp = el("#im-comp").value || mes;
+  let n = 0, pulados = 0;
+  for(const l of impLinhas){
+    if(!l.usar) continue;
+    const parcelas = l.parcTotal>1 ? l.parcTotal : 1;
+    const atual = l.parcTotal>1 ? l.parcAtual : 1;
+    const compInicio = compSoma(comp, -(atual-1));
+    const dup = S.compras.some(c=>c.cartao===cartao && c.desc===l.desc && c.compInicio===compInicio
+      && Math.abs(valorParcela(c,1) - l.valor) < 0.02 && c.parcelas===parcelas);
+    if(dup){ pulados++; continue; }
+    S.compras.push({id:id(), cartao, dela:l.dela, desc:l.desc,
+      valorTotal: Math.round(l.valor*parcelas*100)/100, avista:0,
+      parcelas, compInicio, cat:l.cat, data:l.data});
+    n++;
+  }
+  impLinhas = [];
+  el("#im-texto").value = "";
+  agendarSalvar();
+  mes = comp; aba = "painel"; render();
+  window.scrollTo({top:0,behavior:"smooth"});
+  torrada(n+" lançamento"+(n===1?"":"s")+" importado"+(n===1?"":"s")+(pulados? " · "+pulados+" já existia"+(pulados===1?"":"m") : ""));
 }
 
 /* ===================== render ===================== */
@@ -805,6 +1123,7 @@ function render(){
   els("#abas button").forEach(b=>b.setAttribute("aria-selected", String(b.dataset.aba===aba)));
   if(aba==="painel") renderPainel();
   if(aba==="lancar") renderLancar();
+  if(aba==="importar") renderImportar();
   if(aba==="cartoes") renderCartoes();
   if(aba==="parcelas") renderParcelas();
   if(aba==="projecao") renderProjecao();
@@ -841,7 +1160,7 @@ function renderSeg(){
   seg.innerHTML = opts.map(o=>'<button type="button" data-ver="'+o[0]+'" aria-pressed="'+(ver===o[0])+'">'+esc(o[1])+'</button>').join("");
 }
 function renderAbas(){
-  const abas = [["painel","Painel"],["lancar","Lançar"],["cartoes","Cartões"],["parcelas","Parcelas"],["projecao","Projeção"],["analise","Análise"],["ajustes","Ajustes"]];
+  const abas = [["painel","Painel"],["lancar","Lançar"],["importar","Importar"],["cartoes","Cartões"],["parcelas","Parcelas"],["projecao","Projeção"],["analise","Análise"],["ajustes","Ajustes"]];
   const n = el("#abas");
   if(n.dataset.pronto) return;
   n.dataset.pronto = "1";
@@ -860,7 +1179,9 @@ function renderPainel(){
   el("#p-entrou").textContent = R$(fx.ent);
   el("#p-entrou-sub").textContent = "entradas do mês";
   el("#p-saiu").textContent = R$(fx.saida);
-  el("#p-saiu-sub").textContent = R$(fx.fat)+" em faturas · "+R$(fx.gas)+" à vista";
+  el("#p-saiu-sub").textContent = R$(fx.fat)+" em faturas"
+    + (fx.fin>0 ? " · "+R$(fx.fin)+" em parcelas sem cartão" : "")
+    + " · "+R$(fx.gas)+" à vista";
 
   const fd = fluxo(mes, d=>!!d);
   const totalDela = fd.gas + fd.fat;
@@ -895,14 +1216,17 @@ function renderPainel(){
   const dados = [];
   for(let i=0;i<12;i++){
     const c = compSoma(mes, i), fl = fluxo(c, f);
-    dados.push({c, fat:fl.fat, fix:fl.fixos});
+    dados.push({c, fat:fl.fat, fin:fl.fin, fix:fl.fixos});
   }
-  const teto = Math.max(1, ...dados.map(d=>d.fat+d.fix));
+  const teto = Math.max(1, ...dados.map(d=>d.fat+d.fin+d.fix));
+  const temFin = dados.some(d=>d.fin>0);
+  el("#leg-fin").classList.toggle("oculto", !temFin);
   el("#p-trilho").innerHTML = dados.map((d,i)=>{
-    const hf = Math.round(d.fat/teto*92), hx = Math.round(d.fix/teto*92);
+    const soma = d.fat+d.fin+d.fix;
+    const hf = Math.round(d.fat/teto*92), hn = Math.round(d.fin/teto*92), hx = Math.round(d.fix/teto*92);
     return '<button type="button" class="m" data-comp="'+d.c+'" data-atual="'+(i===0?1:0)+'">'
-      + '<span class="val">'+(d.fat+d.fix>0?brlCurto.format(d.fat+d.fix):"")+'</span>'
-      + '<span class="col"><span class="fat" style="height:'+hf+'%"></span><span class="fix" style="height:'+hx+'%"></span></span>'
+      + '<span class="val">'+(soma>0?brlCurto.format(soma):"")+'</span>'
+      + '<span class="col"><span class="fat" style="height:'+hf+'%"></span><span class="fin" style="height:'+hn+'%"></span><span class="fix" style="height:'+hx+'%"></span></span>'
       + '<span class="rot-m">'+compRotulo(d.c,true)+'</span></button>';
   }).join("");
 
@@ -914,14 +1238,14 @@ function renderPainel(){
     movs.push({tipo:l.tipo, desc:l.desc, cat:l.cat, dela:l.dela, valor:l.valor, data:l.data, fixo:l.fixo, ref:l.id, origem:"l"});
   }
   for(const p of parcelasDe(mes, f)){
-    movs.push({tipo:"parcela", desc:p.compra.desc, cat:p.compra.cat, dela:p.compra.dela, valor:p.valor,
+    movs.push({tipo:"parcela", fin:p.compra.fin, desc:p.compra.desc, cat:p.compra.cat, dela:p.compra.dela, valor:p.valor,
       data:p.compra.data, extra:p.n+"/"+p.compra.parcelas, ref:p.compra.id, origem:"c"});
   }
   movs.sort((a,b)=> (b.data||"").localeCompare(a.data||""));
   el("#p-mov-qtd").textContent = movs.length ? movs.length+" itens" : "";
   el("#p-movimento").innerHTML = movs.length ? movs.map(m=>{
     const sinal = m.tipo==="entrada" ? "pos":"";
-    const ic = m.tipo==="entrada"?"↑":m.tipo==="parcela"?"💳":"↓";
+    const ic = m.tipo==="entrada"?"↑":m.tipo==="parcela"?(m.fin?"🏦":"💳"):"↓";
     return '<div class="item"><div class="icone">'+ic+'</div>'
       + '<div class="desc"><b>'+esc(m.desc)+'</b><small>'
       + (m.cat?esc(m.cat):"")
@@ -948,16 +1272,51 @@ function renderLancar(){
   cartao.innerHTML = S.cartoes.length
     ? S.cartoes.map(c=>'<option value="'+c.id+'"'+(c.id===cAtual?" selected":"")+'>'+esc(c.nome)+'</option>').join("")
     : '<option value="">cadastre um cartão primeiro</option>';
-  els(".linha-cartao").forEach(n=>n.classList.toggle("oculto", tipo!=="cartao"));
+  const parc = (tipo==="cartao" || tipo==="fin");
+  els(".linha-parc").forEach(n=>n.classList.toggle("oculto", !parc));
+  els(".campo-cartao").forEach(n=>n.classList.toggle("oculto", tipo!=="cartao"));
+  els(".campo-comp").forEach(n=>n.classList.toggle("oculto", tipo!=="cartao"));
+  els(".campo-atual").forEach(n=>n.classList.toggle("oculto", tipo!=="fin"));
+  els(".campo-tipodiv").forEach(n=>n.classList.toggle("oculto", tipo!=="fin"));
+  el("#ajuda-tipo").innerHTML = tipo==="gasto"
+      ? "Compra à vista, no débito ou no pix. Marque <b>repete todo mês</b> para escola, pensão, aluguel e assinaturas — aí ele entra sozinho em todos os meses seguintes."
+    : tipo==="cartao"
+      ? "Compra no crédito. Cai na fatura do cartão que você escolher, no mês certo conforme o dia de fechamento."
+    : tipo==="fin"
+      ? "Parcela com prazo que <b>não passa pela fatura</b>: financiamento, empréstimo, imposto parcelado, consórcio ou carnê de loja."
+      : "Dinheiro entrando: salário, pró-labore, dividendos, freela, reembolso.";
+  el("#f-parcelas-rot").textContent = tipo==="fin" ? "De um total de" : "Parcelas";
+  el("#f-avista-rot").textContent = tipo==="fin" ? "Valor financiado (opcional)" : "Preço à vista (opcional)";
+  el("#f-avista").placeholder = "para calcular juros";
   el("#f-fixo-rot").textContent = tipo==="entrada" ? "Repete todo mês (salário, pró-labore)" : "Repete todo mês (fixo)";
-  els(".linha-fixo").forEach(n=>n.classList.toggle("oculto", tipo==="cartao"));
-  el("#f-valor-rot").textContent = tipo==="cartao" ? "Valor total da compra (R$)" : "Valor (R$)";
+  els(".linha-fixo").forEach(n=>n.classList.toggle("oculto", parc));
+  el("#f-valor-rot").textContent = tipo==="cartao" ? "Valor total da compra (R$)"
+    : tipo==="fin" ? "Valor da parcela (R$)" : "Valor (R$)";
+  el("#f-desc").placeholder = tipo==="fin" ? "Financiamento do carro" : "Mercado do mês";
   if(!el("#f-data").value) el("#f-data").value = iso(hoje());
   atualizarPrevia();
+}
+function compInicioFin(){
+  const atual = Math.max(1, parseInt(el("#f-atual").value||"1",10));
+  return compSoma(compHoje(), -(atual-1));
 }
 function atualizarPrevia(){
   const tipo = el("#seg-tipo").querySelector('[aria-pressed="true"]').dataset.tipo;
   const box = el("#f-previa");
+  if(tipo==="fin"){
+    const parcela = num(el("#f-valor").value);
+    const n = Math.max(1, parseInt(el("#f-parcelas").value||"1",10));
+    const atual = Math.min(n, Math.max(1, parseInt(el("#f-atual").value||"1",10)));
+    if(!parcela){ box.classList.add("oculto"); return; }
+    const c0 = compInicioFin(), fim = compSoma(c0, n-1);
+    const faltam = n - atual + 1;
+    const financiado = num(el("#f-avista").value);
+    let t = n+"x de "+R$(parcela)+" · 1ª em "+compRotulo(c0)+" · última em "+compRotulo(fim)
+      + " · faltam "+faltam+" parcela"+(faltam===1?"":"s")+" ("+R$(faltam*parcela)+")";
+    if(financiado>0 && parcela*n>financiado)
+      t += " · juros de "+R$(parcela*n-financiado)+" no total";
+    box.textContent = t; box.classList.remove("oculto"); return;
+  }
   if(tipo!=="cartao"){ box.classList.add("oculto"); return; }
   const total = num(el("#f-valor").value), n = Math.max(1, parseInt(el("#f-parcelas").value||"1",10));
   const cart = S.cartoes.find(c=>c.id===el("#f-cartao").value);
@@ -999,7 +1358,16 @@ function renderParcelas(){
   const falta = dividaFutura(mes, f);
   el("#pc-falta").textContent = R$(falta);
   el("#pc-falta").className = "valor " + (falta>0?"neg":"pos");
-  el("#pc-falta-sub").textContent = abertas.length+" compra"+(abertas.length===1?"":"s")+" em aberto";
+  let fCart=0, fFin=0;
+  for(const c of S.compras){
+    if(f && !f(c.dela)) continue;
+    for(let n=1;n<=c.parcelas;n++){
+      if(compSoma(c.compInicio,n-1) >= mes){ if(c.fin) fFin += valorParcela(c,n); else fCart += valorParcela(c,n); }
+    }
+  }
+  el("#pc-falta-sub").textContent = fFin>0
+    ? R$(fCart)+" no cartão · "+R$(fFin)+" fora do cartão"
+    : abertas.length+" lançamento"+(abertas.length===1?"":"s")+" em aberto";
   const u = ultimaComp();
   el("#pc-fim").textContent = u && u>=mes ? cap(compRotulo(u)) : "Tudo quitado";
   el("#pc-fim-sub").textContent = u && u>=mes ? "faltam "+(compDelta(mes,u)+1)+" meses" : "nenhuma parcela à frente";
@@ -1007,13 +1375,13 @@ function renderParcelas(){
   for(const c of S.compras){ if(c.avista && c.valorTotal > c.avista){ juros += c.valorTotal-c.avista; comJuros++; } }
   el("#pc-juros").textContent = juros>0 ? R$(juros) : "—";
   el("#pc-juros").className = "valor " + (juros>0?"wrn":"");
-  el("#pc-juros-sub").textContent = comJuros ? "em "+comJuros+" compra"+(comJuros===1?"":"s")+" com preço à vista informado" : "informe o preço à vista para eu calcular";
+  el("#pc-juros-sub").textContent = comJuros ? "em "+comJuros+" lançamento"+(comJuros===1?"":"s")+" com valor à vista ou financiado informado" : "informe o valor à vista ou financiado";
 
   const todas = S.compras.filter(c=> !f || f(c.dela)).slice().sort((a,b)=>(b.data||"").localeCompare(a.data||""));
-  el("#pc-qtd").textContent = todas.length? todas.length+" compras":"";
+  el("#pc-qtd").textContent = todas.length? todas.length+" lançamento"+(todas.length===1?"":"s"):"";
   el("#pc-vazio").classList.toggle("oculto", todas.length>0);
   el("#pc-tabela").innerHTML = !todas.length ? "" :
-    '<thead><tr><th>Compra</th><th>Cartão</th><th>De quem</th><th>Parcela</th><th style="text-align:right">Valor</th><th style="text-align:right">Total</th><th>Termina</th><th></th></tr></thead><tbody>'
+    '<thead><tr><th>Compra</th><th>Onde</th><th>De quem</th><th>Parcela</th><th style="text-align:right">Valor</th><th style="text-align:right">Total</th><th>Termina</th><th></th></tr></thead><tbody>'
     + todas.map(c=>{
       const k = compDelta(c.compInicio, mes);
       const paga = Math.min(c.parcelas, Math.max(0, k));
@@ -1021,7 +1389,7 @@ function renderParcelas(){
       const fim = compSoma(c.compInicio, c.parcelas-1);
       const cart = S.cartoes.find(x=>x.id===c.cartao);
       return '<tr><td><b>'+esc(c.desc)+'</b>'+(c.cat?' <span class="rot">'+esc(c.cat)+'</span>':'')+'</td>'
-        + '<td>'+esc(cart?cart.nome:"—")+'</td>'
+        + '<td>'+(c.fin? '<span class="pilula" style="background:var(--accent-soft);color:var(--accent)">'+esc(rotuloDivida(c))+'</span>' : esc(cart?cart.nome:"—"))+'</td>'
         + '<td>'+(c.dela? etiqueta(true) : '<span style="color:var(--ink-3)">eu</span>')+'</td>'
         + '<td class="mono">'+(atual? atual+"/"+c.parcelas : "a partir de "+compRotulo(c.compInicio,true))+'</td>'
         + '<td class="n">'+R$(valorParcela(c, Math.max(1,atual)))+'</td>'
@@ -1040,12 +1408,16 @@ function renderProjecao(){
     acum += fl.saldo;
     linhas.push({c, fl, acum});
   }
+  const temFin = linhas.some(l=>l.fl.fin>0);
   el("#pj-tabela").innerHTML =
-    '<thead><tr><th>Mês</th><th style="text-align:right">Entradas</th><th style="text-align:right">Gastos</th><th style="text-align:right">Faturas</th><th style="text-align:right">Sobra</th><th style="text-align:right">Acumulado</th></tr></thead><tbody>'
+    '<thead><tr><th>Mês</th><th style="text-align:right">Entradas</th><th style="text-align:right">Gastos</th><th style="text-align:right">Faturas</th>'
+    + (temFin?'<th style="text-align:right">Sem cartão</th>':'')
+    + '<th style="text-align:right">Sobra</th><th style="text-align:right">Acumulado</th></tr></thead><tbody>'
     + linhas.map(l=>'<tr><td>'+cap(compRotulo(l.c))+'</td>'
       + '<td class="n pos">'+R$(l.fl.ent)+'</td>'
       + '<td class="n">'+R$(l.fl.gas)+'</td>'
       + '<td class="n">'+R$(l.fl.fat)+'</td>'
+      + (temFin?'<td class="n">'+R$(l.fl.fin)+'</td>':'')
       + '<td class="n '+(l.fl.saldo>=0?"pos":"neg")+'"><b>'+R$(l.fl.saldo)+'</b></td>'
       + '<td class="n '+(l.acum>=0?"":"neg")+'">'+R$(l.acum)+'</td></tr>').join("")
     + "</tbody>";
@@ -1095,6 +1467,18 @@ function analisar(){
     out.push({nivel:"info",titulo:"Falta lançar as entradas",texto:"Sem salário ou pró-labore lançados eu não consigo calcular percentuais. Lance como <b>entrada fixa</b> e o resto se ajeita sozinho."});
   }
 
+  if(renda>0 && fx.fin>0){
+    const pctT = (fx.fat+fx.fin)/renda*100;
+    out.push({
+      nivel: pctT>50?"critico":pctT>35?"atencao":"bom",
+      titulo:"Dívida fixa x renda",
+      texto:"Cartão e parcelas fixas juntos comem <b>"+pctT.toFixed(0)+"%</b> do que entra — <b>"+R$(fx.fat+fx.fin)+"</b> por mês que já têm dono antes de você acordar. "
+        + (pctT>50?"Acima de 50% qualquer imprevisto vira dívida nova."
+          : pctT>35?"É bastante. Antes de assumir qualquer parcela nova, veja o mês mais apertado logo abaixo."
+          : "É um patamar administrável.")
+    });
+  }
+
   // pior mês
   let pior=null;
   for(let i=0;i<12;i++){
@@ -1111,12 +1495,12 @@ function analisar(){
     });
   }
 
-  const u = ultimaComp();
-  if(u && u>=mes){
-    out.push({
-      nivel:"info", titulo:"Quando o cartão fica limpo",
-      texto:"Sem parcelar mais nada, a última parcela cai em <b>"+compRotulo(u)+"</b>. Até lá são <b>"+R$(falta)+"</b> já comprometidos — dinheiro que já saiu do seu bolso, só não saiu da conta ainda."
-    });
+  const uc = ultimaComp("cartao"), uf = ultimaComp("fin");
+  if((uc && uc>=mes) || (uf && uf>=mes)){
+    let t = "Já estão comprometidos <b>"+R$(falta)+"</b> — dinheiro que saiu do seu bolso, só não saiu da conta ainda. ";
+    if(uc && uc>=mes) t += "A última parcela de cartão cai em <b>"+compRotulo(uc)+"</b>. ";
+    if(uf && uf>=mes) t += "As parcelas fora do cartão vão até <b>"+compRotulo(uf)+"</b>"+(uc&&uc>=mes?", e é ele que segura a sua data da virada.":".");
+    out.push({nivel:"info", titulo:"Quando você se livra", texto:t});
   }
 
   const cats = gastosPorCategoria(3);
@@ -1190,12 +1574,13 @@ function resumoTexto(){
   const l = [];
   l.push("Resumo Nosso Caixa — "+compRotulo(mes)+" (filtro: "+rotuloFiltro()+")");
   l.push("Entradas: "+R$(fx.ent)+" | Gastos à vista: "+R$(fx.gas)+" | Faturas: "+R$(fx.fat)+" | Sobra: "+R$(fx.saldo));
-  l.push("Dívida de cartão à frente: "+R$(dividaFutura(mes,f))+(ultimaComp()?" (última parcela em "+compRotulo(ultimaComp())+")":""));
+  l.push("Dívida à frente (cartão + financiamento): "+R$(dividaFutura(mes,f))+(ultimaComp()?" (última parcela em "+compRotulo(ultimaComp())+")":""));
+  if(ultimaComp("fin")) l.push("Financiamento: "+R$(fluxo(mes,f).fin)+" por mês até "+compRotulo(ultimaComp("fin")));
   l.push("");
-  l.push("Projeção 12 meses (mês | entradas | gastos | faturas | sobra):");
+  l.push("Projeção 12 meses (mês | entradas | gastos | faturas | financiamento | sobra):");
   for(let i=0;i<12;i++){
     const c = compSoma(mes,i), fl = fluxo(c,f);
-    l.push(compRotulo(c,true)+" | "+fl.ent.toFixed(2)+" | "+fl.gas.toFixed(2)+" | "+fl.fat.toFixed(2)+" | "+fl.saldo.toFixed(2));
+    l.push(compRotulo(c,true)+" | "+fl.ent.toFixed(2)+" | "+fl.gas.toFixed(2)+" | "+fl.fat.toFixed(2)+" | "+fl.fin.toFixed(2)+" | "+fl.saldo.toFixed(2));
   }
   l.push("");
   const fdr = fluxo(mes, d=>!!d);
@@ -1204,10 +1589,10 @@ function resumoTexto(){
   l.push("Gastos por categoria (3 meses):");
   gastosPorCategoria(3).forEach(c=>l.push("- "+c.cat+": "+c.valor.toFixed(2)));
   l.push("");
-  l.push("Compras parceladas em aberto:");
+  l.push("Parcelas em aberto (cartão e financiamento):");
   S.compras.filter(c=>compSoma(c.compInicio,c.parcelas-1)>=mes).forEach(c=>{
     const k = compDelta(c.compInicio,mes);
-    l.push("- "+c.desc+": "+c.parcelas+"x de "+valorParcela(c,1).toFixed(2)+", na "+Math.max(1,k+1)+"ª, termina "+compRotulo(compSoma(c.compInicio,c.parcelas-1),true));
+    l.push("- "+c.desc+(c.fin?" [financiamento]":"")+": "+c.parcelas+"x de "+valorParcela(c,1).toFixed(2)+", na "+Math.max(1,k+1)+"ª, termina "+compRotulo(compSoma(c.compInicio,c.parcelas-1),true));
   });
   return l.join("\n");
 }
@@ -1236,14 +1621,17 @@ function exemplo(){
     {id:id(),tipo:"gasto",dela:false,desc:"Aluguel",valor:2200,cat:"Casa",data:iso(hoje()),comp:m,fixo:true},
     {id:id(),tipo:"gasto",dela:false,desc:"Mercado do mês",valor:1450,cat:"Mercado",data:iso(hoje()),comp:m,fixo:false},
     {id:id(),tipo:"gasto",dela:false,desc:"Gasolina",valor:620,cat:"Gasolina",data:iso(hoje()),comp:m,fixo:true},
-    {id:id(),tipo:"gasto",dela:false,desc:"Escola do Miguel",valor:980,cat:"Filho",data:iso(hoje()),comp:m,fixo:true},
+    {id:id(),tipo:"gasto",dela:false,desc:"Escola do Miguel",valor:980,cat:"Escola",data:iso(hoje()),comp:m,fixo:true},
+    {id:id(),tipo:"gasto",dela:false,desc:"Pensão",valor:1400,cat:"Pensão",data:iso(hoje()),comp:m,fixo:true},
     {id:id(),tipo:"gasto",dela:true,desc:"Salão",valor:260,cat:"Beleza",data:iso(hoje()),comp:m,fixo:false},
     {id:id(),tipo:"gasto",dela:true,desc:"Farmácia",valor:185,cat:"Saúde",data:iso(hoje()),comp:m,fixo:false}
   ];
   S.compras = [
     {id:id(),dela:false,cartao:c1.id,desc:"Pneus do carro",valorTotal:3600,avista:3100,parcelas:6,compInicio:m,cat:"Carro",data:iso(hoje())},
     {id:id(),dela:true,cartao:c1.id,desc:"Vestido e prova",valorTotal:2400,parcelas:8,compInicio:compSoma(m,-2),cat:"Casamento",data:iso(hoje())},
-    {id:id(),dela:false,cartao:c2.id,desc:"Geladeira",valorTotal:4800,avista:4200,parcelas:10,compInicio:compSoma(m,-3),cat:"Casa",data:iso(hoje())}
+    {id:id(),dela:false,cartao:c2.id,desc:"Geladeira",valorTotal:4800,avista:4200,parcelas:10,compInicio:compSoma(m,-3),cat:"Casa",data:iso(hoje())},
+    {id:id(),dela:false,fin:true,tipoDiv:"financiamento",cartao:"",desc:"Financiamento do carro",valorTotal:60000,avista:42000,parcelas:48,compInicio:compSoma(m,-17),cat:"Carro",data:iso(hoje())},
+    {id:id(),dela:false,fin:true,tipoDiv:"imposto",cartao:"",desc:"IPVA parcelado",valorTotal:2400,parcelas:3,compInicio:compSoma(m,-1),cat:"Impostos",data:iso(hoje())}
   ];
   agendarSalvar(); render(); torrada("Dados de exemplo carregados.");
 }
@@ -1296,6 +1684,36 @@ function ligar(){
     if(m){ mes = m.dataset.comp; abrirPicker(false); render(); }
   });
 
+  // importador
+  el("#im-ler").onclick = ()=>{
+    const t = el("#im-texto").value.trim();
+    if(!t){ torrada("Cole o extrato ou abra um arquivo."); return; }
+    const comp = el("#im-comp").value || mes;
+    impLinhas = lerExtrato(t, comp);
+    if(!impLinhas.length){ torrada("Não reconheci nenhuma linha. Confira se veio o valor junto."); }
+    else torrada(impLinhas.length+" linha"+(impLinhas.length===1?"":"s")+" lida"+(impLinhas.length===1?"":"s")+" — confira abaixo.");
+    renderImpTabela();
+  };
+  el("#im-arquivo").addEventListener("change", ev=>{
+    const f = ev.target.files && ev.target.files[0]; if(!f) return;
+    const fr = new FileReader();
+    fr.onload = ()=>{ el("#im-texto").value = String(fr.result||""); el("#im-ler").click(); };
+    fr.onerror = ()=>torrada("Não consegui abrir esse arquivo. Tente copiar e colar o conteúdo.");
+    fr.readAsText(f, "utf-8");
+    ev.target.value = "";
+  });
+  el("#im-limpar").onclick = ()=>{ el("#im-texto").value=""; impLinhas=[]; renderImpTabela(); };
+  el("#im-marcar").onclick = ()=>{ impLinhas.forEach(l=>l.usar=!l.usar); renderImpTabela(); };
+  el("#im-confirmar").onclick = importarLinhas;
+  el("#im-tabela").addEventListener("input", e=>{
+    const t = e.target, i = Number(t.dataset.i), campo = t.dataset.imp;
+    if(!campo || !impLinhas[i]) return;
+    if(campo==="usar"){ impLinhas[i].usar = t.checked; renderImpTabela(); }
+    else if(campo==="dela") impLinhas[i].dela = t.checked;
+    else impLinhas[i][campo] = t.value;
+    if(campo==="dela") renderImpTabela();
+  });
+
   // lançamento rápido
   el("#q-ler").onclick = ()=>{
     const t = el("#q-texto").value.trim();
@@ -1311,6 +1729,7 @@ function ligar(){
       if(r.cartao) el("#f-cartao").value = r.cartao;
       el("#f-comp").value = "";
     }
+    if(r.tipo==="fin"){ el("#f-parcelas").value = r.parcelas>1?r.parcelas:12; el("#f-atual").value = "1"; el("#f-tipodiv").value = r.tipoDiv; }
     el("#f-fixo").checked = r.fixo;
     if(r.tipo!=="entrada") el("#f-quem").value = r.dela ? "ela" : "eu";
     atualizarPrevia();
@@ -1332,7 +1751,7 @@ function ligar(){
     };
   }
 
-  ["#f-valor","#f-parcelas","#f-cartao","#f-data","#f-comp","#f-avista"].forEach(q=>{
+  ["#f-valor","#f-parcelas","#f-atual","#f-cartao","#f-data","#f-comp","#f-avista"].forEach(q=>{
     el(q).addEventListener("input", atualizarPrevia);
     el(q).addEventListener("change", atualizarPrevia);
   });
@@ -1344,7 +1763,14 @@ function ligar(){
     const valor = num(el("#f-valor").value);
     const data = el("#f-data").value || iso(hoje());
     if(!desc || valor<=0){ torrada("Preencha descrição e valor."); return; }
-    if(tipo==="cartao"){
+    if(tipo==="fin"){
+      const n = Math.max(1, parseInt(el("#f-parcelas").value||"1",10));
+      const atual = Math.min(n, Math.max(1, parseInt(el("#f-atual").value||"1",10)));
+      S.compras.push({id:id(), fin:true, tipoDiv: el("#f-tipodiv").value, dela: el("#f-quem").value==="ela", cartao:"", desc,
+        valorTotal: Math.round(valor*n*100)/100, avista:num(el("#f-avista").value)||0,
+        parcelas:n, compInicio: compSoma(compHoje(), -(atual-1)), cat:el("#f-cat").value, data});
+      torrada(DIVIDAS[el("#f-tipodiv").value]+" lançado: "+(n-atual+1)+" parcelas pela frente.");
+    }else if(tipo==="cartao"){
       const cartao = el("#f-cartao").value;
       if(!cartao){ torrada("Cadastre um cartão antes."); aba="cartoes"; render(); return; }
       const n = Math.max(1, parseInt(el("#f-parcelas").value||"1",10));
@@ -1361,7 +1787,7 @@ function ligar(){
     }
     agendarSalvar();
     el("#f-desc").value=""; el("#f-valor").value=""; el("#f-avista").value=""; el("#f-parcelas").value="1";
-    el("#f-comp").value=""; el("#f-fixo").checked=false; el("#q-texto").value="";
+    el("#f-atual").value="1"; el("#f-comp").value=""; el("#f-fixo").checked=false; el("#q-texto").value="";
     mes = compDe(data);
     aba = "painel"; render(); window.scrollTo({top:0,behavior:"smooth"});
   });
