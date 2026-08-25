@@ -231,6 +231,7 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
 .modal-cab .dl-total{margin-left:auto;font-weight:600;font-size:17px;white-space:nowrap;align-self:center;font-variant-numeric:tabular-nums}
 .dl-corpo{max-height:min(62vh,520px);overflow-y:auto}
 #dlg-lista{max-width:min(560px,94vw)}
+#dlg-editar{max-width:min(560px,94vw)}
 .clicavel{cursor:pointer;position:relative}
 .clicavel:hover{border-color:var(--line-forte)}
 .clicavel::after{content:"›";position:absolute;right:14px;top:14px;color:var(--ink-3);font-size:17px;line-height:1}
@@ -390,6 +391,9 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
           </div>
           <div class="linha-campos linha-fixo" style="margin-top:11px">
             <label class="check"><input type="checkbox" id="f-fixo"> <span id="f-fixo-rot">Repete todo mês (fixo)</span></label>
+          </div>
+          <div class="linha-campos linha-reemb oculto" style="margin-top:11px">
+            <label class="check"><input type="checkbox" id="f-reemb"> <span id="f-reemb-rot">É o que ela me paga de volta</span></label>
           </div>
           <div class="aviso info oculto" id="f-previa" style="margin-top:12px"></div>
           <div class="acoes">
@@ -583,6 +587,46 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
 
 <button class="fab" id="fab" title="Novo lançamento" aria-label="Novo lançamento">+</button>
 <div class="torrada" id="torrada" role="status" aria-live="polite"></div>
+
+<dialog id="dlg-editar">
+  <div class="modal-cab">
+    <div><span class="rot" id="ed-sub"></span><h2 id="ed-titulo">Editar</h2></div>
+    <button type="button" class="btn fantasma mini" id="ed-fechar" aria-label="Fechar">✕</button>
+  </div>
+  <div class="modal-corpo">
+    <div class="linha-campos">
+      <div class="campo" style="grid-column:1/-1"><label for="ed-desc">Descrição</label><input id="ed-desc"></div>
+    </div>
+    <div class="linha-campos" style="margin-top:11px">
+      <div class="campo"><label for="ed-valor" id="ed-valor-rot">Valor (R$)</label><input id="ed-valor" class="mono" inputmode="decimal"></div>
+      <div class="campo ed-data"><label for="ed-data">Data</label><input id="ed-data" type="date"></div>
+      <div class="campo ed-cat"><label for="ed-cat">Categoria</label><select id="ed-cat"></select></div>
+      <div class="campo ed-quem"><label for="ed-quem">Quem gastou</label><select id="ed-quem"><option value="eu">Eu</option><option value="ela">Ela</option></select></div>
+    </div>
+    <div class="linha-campos ed-parc" style="margin-top:11px">
+      <div class="campo ed-cartao"><label for="ed-cartao">Cartão</label><select id="ed-cartao"></select></div>
+      <div class="campo ed-tipodiv"><label for="ed-tipodiv">Tipo</label><select id="ed-tipodiv">
+        <option value="financiamento">Financiamento</option><option value="emprestimo">Empréstimo</option>
+        <option value="imposto">Imposto parcelado</option><option value="consorcio">Consórcio</option><option value="outro">Outro carnê</option>
+      </select></div>
+      <div class="campo"><label for="ed-parcelas">Nº de parcelas</label><input id="ed-parcelas" class="mono" type="number" min="1" max="480"></div>
+      <div class="campo"><label for="ed-comp" id="ed-comp-rot">1ª parcela na fatura de</label><input id="ed-comp" type="month"></div>
+      <div class="campo ed-avista"><label for="ed-avista" id="ed-avista-rot">Preço à vista (opcional)</label><input id="ed-avista" class="mono" inputmode="decimal"></div>
+    </div>
+    <div class="linha-campos ed-fixo" style="margin-top:11px">
+      <label class="check"><input type="checkbox" id="ed-fixo"> <span id="ed-fixo-rot">Repete todo mês</span></label>
+    </div>
+    <div class="linha-campos ed-reemb" style="margin-top:11px">
+      <label class="check"><input type="checkbox" id="ed-reemb"> <span id="ed-reemb-rot">É reembolso dela</span></label>
+    </div>
+    <div class="aviso info" id="ed-previa" style="margin-top:12px"></div>
+    <div class="acoes">
+      <button type="button" class="btn" id="ed-salvar">Salvar</button>
+      <button type="button" class="btn fantasma" id="ed-cancelar">Cancelar</button>
+      <button type="button" class="btn perigo" id="ed-apagar" style="margin-left:auto">Apagar</button>
+    </div>
+  </div>
+</dialog>
 
 <dialog id="dlg-lista">
   <div class="modal-cab">
@@ -1194,6 +1238,103 @@ function importarLinhas(){
 }
 
 
+
+/* ===================== editor ===================== */
+let edAtual = null;   // {tipo:'l'|'c', id}
+function selCats(sel, atual, lista){
+  sel.innerHTML = (lista||S.config.cats).map(c=>'<option'+(c===atual?" selected":"")+'>'+esc(c)+'</option>').join("");
+}
+function abrirEditor(origem, ref){
+  const lanc = origem==="l" ? S.lancamentos.find(x=>x.id===ref) : null;
+  const compra = origem==="c" ? S.compras.find(x=>x.id===ref) : null;
+  const o = lanc || compra;
+  if(!o) return;
+  edAtual = {tipo:origem, id:ref};
+  const ehEntrada = !!lanc && lanc.tipo==="entrada";
+  const ehParc = !!compra;
+  const ehFin = ehParc && !!compra.fin;
+
+  el("#ed-titulo").textContent = ehEntrada ? "Editar entrada" : ehParc ? (ehFin?"Editar "+rotuloDivida(compra).toLowerCase():"Editar compra no cartão") : "Editar gasto";
+  el("#ed-sub").textContent = ehParc ? compra.parcelas+"x" : (lanc.fixo ? "fixo" : "avulso");
+  el("#ed-desc").value = o.desc || "";
+  el("#ed-valor-rot").textContent = ehParc ? "Valor da parcela (R$)" : "Valor (R$)";
+  el("#ed-valor").value = (ehParc ? valorParcela(compra,1) : o.valor).toFixed(2).replace(".",",");
+  el("#ed-data").value = o.data || iso(hoje());
+  selCats(el("#ed-cat"), o.cat, ehEntrada ? S.config.catsEnt : S.config.cats);
+  el("#ed-quem").innerHTML = '<option value="eu">Eu</option><option value="ela">'+esc(nomeEla())+'</option>';
+  el("#ed-quem").value = o.dela ? "ela" : "eu";
+  el("#ed-fixo").checked = !!(lanc && lanc.fixo);
+  el("#ed-fixo-rot").textContent = ehEntrada ? "Repete todo mês (salário, pró-labore)" : "Repete todo mês (fixo)";
+  el("#ed-reemb").checked = !!(lanc && lanc.reemb);
+  el("#ed-reemb-rot").textContent = "É o que "+nomeEla()+" me paga de volta";
+
+  if(ehParc){
+    el("#ed-parcelas").value = compra.parcelas;
+    el("#ed-comp").value = compra.compInicio;
+    el("#ed-comp-rot").textContent = ehFin ? "1ª parcela em" : "1ª parcela na fatura de";
+    el("#ed-avista-rot").textContent = ehFin ? "Valor financiado (opcional)" : "Preço à vista (opcional)";
+    el("#ed-avista").value = compra.avista ? String(compra.avista).replace(".",",") : "";
+    el("#ed-cartao").innerHTML = S.cartoes.map(c=>'<option value="'+c.id+'"'+(c.id===compra.cartao?" selected":"")+'>'+esc(c.nome)+'</option>').join("");
+    el("#ed-tipodiv").value = compra.tipoDiv || "financiamento";
+  }
+  els(".ed-parc").forEach(n=>n.classList.toggle("oculto", !ehParc));
+  els(".ed-cartao").forEach(n=>n.classList.toggle("oculto", !ehParc || ehFin));
+  els(".ed-tipodiv").forEach(n=>n.classList.toggle("oculto", !ehFin));
+  els(".ed-avista").forEach(n=>n.classList.toggle("oculto", !ehParc));
+  els(".ed-fixo").forEach(n=>n.classList.toggle("oculto", ehParc));
+  els(".ed-reemb").forEach(n=>n.classList.toggle("oculto", !ehEntrada));
+  els(".ed-quem").forEach(n=>n.classList.toggle("oculto", ehEntrada));
+  els(".ed-data").forEach(n=>n.classList.toggle("oculto", false));
+  previaEditor();
+  el("#dlg-editar").showModal();
+}
+function previaEditor(){
+  const box = el("#ed-previa");
+  if(!edAtual || edAtual.tipo!=="c"){ box.classList.add("oculto"); return; }
+  const compra = S.compras.find(x=>x.id===edAtual.id); if(!compra){ box.classList.add("oculto"); return; }
+  const parcela = num(el("#ed-valor").value);
+  const n = Math.max(1, parseInt(el("#ed-parcelas").value||"1",10));
+  const c0 = el("#ed-comp").value || compra.compInicio;
+  const d = compra.fin ? 0 : deslocCartao(el("#ed-cartao").value || compra.cartao);
+  const fim = compSoma(c0, n-1+d);
+  const prim = compSoma(c0, d);
+  box.innerHTML = "<span>◆</span><span>Total de <b>"+R$(parcela*n)+"</b> em "+n+"x. "
+    + "Sai da conta de <b>"+compRotulo(prim)+"</b> até <b>"+compRotulo(fim)+"</b>.</span>";
+  box.classList.remove("oculto");
+}
+function salvarEditor(){
+  if(!edAtual) return;
+  const desc = el("#ed-desc").value.trim();
+  const valor = num(el("#ed-valor").value);
+  if(!desc || valor<=0){ torrada("Preencha descrição e valor."); return; }
+  if(edAtual.tipo==="l"){
+    const l = S.lancamentos.find(x=>x.id===edAtual.id); if(!l) return;
+    l.desc = desc; l.valor = valor;
+    l.data = el("#ed-data").value || l.data;
+    l.comp = compDe(l.data);
+    l.cat = el("#ed-cat").value;
+    if(l.tipo==="entrada"){ l.reemb = el("#ed-reemb").checked; l.dela = false; }
+    else l.dela = el("#ed-quem").value==="ela";
+    l.fixo = el("#ed-fixo").checked;
+  }else{
+    const c = S.compras.find(x=>x.id===edAtual.id); if(!c) return;
+    const n = Math.max(1, parseInt(el("#ed-parcelas").value||"1",10));
+    c.desc = desc; c.parcelas = n;
+    c.valorTotal = Math.round(valor*n*100)/100;
+    c.avista = num(el("#ed-avista").value)||0;
+    c.compInicio = el("#ed-comp").value || c.compInicio;
+    c.data = el("#ed-data").value || c.data;
+    c.cat = el("#ed-cat").value;
+    c.dela = el("#ed-quem").value==="ela";
+    if(c.fin) c.tipoDiv = el("#ed-tipodiv").value;
+    else c.cartao = el("#ed-cartao").value || c.cartao;
+  }
+  el("#dlg-editar").close();
+  edAtual = null;
+  agendarSalvar(); render();
+  torrada("Lançamento atualizado.");
+}
+
 /* ===================== detalhe (drill-down) ===================== */
 function abrirDetalhe(titulo, sub, itens){
   const dlg = el("#dlg-lista");
@@ -1208,6 +1349,10 @@ function abrirDetalhe(titulo, sub, itens){
     + '<div class="num'+(i.sinal==="+"?" pos":"")+'">'+(i.sinal||"")+" "+R$(i.valor)+'</div></div>'
   ).join("") : '<div class="vazio"><b>Nada aqui neste mês</b>Nenhum lançamento se encaixa neste filtro.</div>';
   dlg.showModal();
+}
+function reembolsoDela(comp){
+  return S.lancamentos.filter(l=>l.tipo==="entrada" && l.reemb && ativoNoMes(l,comp))
+    .reduce((s,l)=>s+l.valor,0);
 }
 function itensEntradas(comp, f){
   return S.lancamentos.filter(l=>l.tipo==="entrada" && ativoNoMes(l,comp) && (!f || f(l.dela)))
@@ -1311,9 +1456,15 @@ function renderPainel(){
   const cardDela = el("#card-dela");
   cardDela.classList.toggle("oculto", totalDela<=0 || ver==="meus");
   if(totalDela>0){
+    const reemb = reembolsoDela(mes);
+    const dif = Math.round((totalDela - reemb)*100)/100;
     el("#p-dela-rot").textContent = "Gastos de "+nomeEla();
     el("#p-dela").textContent = R$(totalDela);
-    el("#p-dela-sub").textContent = fx.saida>0 ? Math.round(totalDela/fx.saida*100)+"% de tudo que saiu" : "";
+    el("#p-dela").className = "valor" + (reemb>0 ? (Math.abs(dif)<0.01 ? " pos" : " wrn") : "");
+    el("#p-dela-sub").textContent = reemb>0
+      ? "ela te paga "+R$(reemb)+" · "+(Math.abs(dif)<0.01 ? "bate certinho"
+          : dif>0 ? "faltam "+R$(dif) : "sobram "+R$(-dif))
+      : (fx.saida>0 ? Math.round(totalDela/fx.saida*100)+"% de tudo que saiu" : "");
   }
 
   // faturas a pagar neste mês (caixa)
@@ -1395,7 +1546,7 @@ function renderPainel(){
   el("#p-movimento").innerHTML = movs.length ? movs.map(m=>{
     const sinal = m.tipo==="entrada" ? "pos":"";
     const ic = m.tipo==="entrada"?"↑":m.tipo==="parcela"?(m.fin?"🏦":"💳"):"↓";
-    return '<div class="item"><div class="icone">'+ic+'</div>'
+    return '<div class="item clicavel" data-editar="'+m.origem+':'+m.ref+'"><div class="icone">'+ic+'</div>'
       + '<div class="desc"><b>'+esc(m.desc)+'</b><small>'
       + (m.cat?esc(m.cat):"")
       + (m.dela? ' · '+etiqueta(true):"")
@@ -1440,6 +1591,8 @@ function renderLancar(){
   el("#f-avista").placeholder = "para calcular juros";
   el("#f-fixo-rot").textContent = tipo==="entrada" ? "Repete todo mês (salário, pró-labore)" : "Repete todo mês (fixo)";
   els(".linha-fixo").forEach(n=>n.classList.toggle("oculto", parc));
+  els(".linha-reemb").forEach(n=>n.classList.toggle("oculto", tipo!=="entrada"));
+  el("#f-reemb-rot").textContent = "É o que "+nomeEla()+" me paga de volta";
   el("#f-valor-rot").textContent = tipo==="cartao" ? "Valor total da compra (R$)"
     : tipo==="fin" ? "Valor da parcela (R$)" : "Valor (R$)";
   el("#f-desc").placeholder = tipo==="fin" ? "Financiamento do carro" : "Mercado do mês";
@@ -1539,7 +1692,7 @@ function renderParcelas(){
       const atual = (k>=0 && k<c.parcelas) ? (k+1) : (k<0? 0 : c.parcelas);
       const fim = compSoma(c.compInicio, c.parcelas-1+d);
       const cart = S.cartoes.find(x=>x.id===c.cartao);
-      return '<tr><td><b>'+esc(c.desc)+'</b>'+(c.cat?' <span class="rot">'+esc(c.cat)+'</span>':'')+'</td>'
+      return '<tr class="clicavel" data-editar="c:'+c.id+'"><td><b>'+esc(c.desc)+'</b>'+(c.cat?' <span class="rot">'+esc(c.cat)+'</span>':'')+'</td>'
         + '<td>'+(c.fin? '<span class="pilula" style="background:var(--accent-soft);color:var(--accent)">'+esc(rotuloDivida(c))+'</span>' : esc(cart?cart.nome:"—"))+'</td>'
         + '<td>'+(c.dela? etiqueta(true) : '<span style="color:var(--ink-3)">eu</span>')+'</td>'
         + '<td class="mono">'+(atual? atual+"/"+c.parcelas : "a partir de "+compRotulo(compSoma(c.compInicio,d),true))+'</td>'
@@ -1682,11 +1835,19 @@ function analisar(){
     const fd = fluxo(mes, d=>!!d), td = fd.gas + fd.fat;
     if(td>0){
       const tot = fx.saida || 1;
+      const reemb = reembolsoDela(mes);
+      const dif = Math.round((td - reemb)*100)/100;
       out.push({
-        nivel:"info", titulo:"Gastos de "+nomeEla(),
-        texto:"Neste mês são <b>"+R$(td)+"</b>, ou <b>"+Math.round(td/tot*100)+"%</b> de tudo que saiu"
+        nivel: reemb>0 ? (Math.abs(dif)<0.01 ? "bom" : "atencao") : "info",
+        titulo:"Acerto com "+nomeEla(),
+        texto:"Ela gastou <b>"+R$(td)+"</b> neste mês"
           + (fd.fat>0? ", sendo "+R$(fd.fat)+" em parcelas do cartão":"")
-          + ". Use o filtro <b>"+esc(nomeEla())+"</b> lá em cima para ver item por item."
+          + ". " + (reemb>0
+            ? "Você lançou <b>"+R$(reemb)+"</b> como o que ela te paga de volta — "
+              + (Math.abs(dif)<0.01 ? "bate certinho."
+                : dif>0 ? "ainda faltam <b>"+R$(dif)+"</b> para fechar."
+                : "são <b>"+R$(-dif)+"</b> a mais do que ela gastou.")
+            : "Marque a entrada dela como <b>reembolso</b> na hora de lançar e eu passo a comparar os dois números todo mês.")
       });
     }
   }
@@ -1828,8 +1989,15 @@ function ligar(){
     const f = filtroAtual();
     if(q==="entrou") abrirDetalhe("Entradas", cap(compRotulo(mes)), itensEntradas(mes,f));
     if(q==="saiu") abrirDetalhe("Tudo que saiu", cap(compRotulo(mes)), itensSaidas(mes,f));
-    if(q==="dela") abrirDetalhe("Gastos de "+nomeEla(), cap(compRotulo(mes)),
-      itensAVista(mes, d=>!!d).concat(itensParcelas(mes, d=>!!d)).sort((a,b)=>b.valor-a.valor));
+    if(q==="dela"){
+      const itens = itensAVista(mes, d=>!!d).concat(itensParcelas(mes, d=>!!d)).sort((a,b)=>b.valor-a.valor);
+      const tot = itens.reduce((s,i)=>s+i.valor,0), reemb = reembolsoDela(mes);
+      const dif = Math.round((tot-reemb)*100)/100;
+      abrirDetalhe("Gastos de "+nomeEla(),
+        reemb>0 ? cap(compRotulo(mes))+" · ela te paga "+R$(reemb)+" · "+(Math.abs(dif)<0.01?"bate certinho":dif>0?"faltam "+R$(dif):"sobram "+R$(-dif))
+                : cap(compRotulo(mes)),
+        itens);
+    }
   };
   ["entrou","saiu","dela"].forEach(q=>{
     const n = el("#card-"+q);
@@ -1868,7 +2036,27 @@ function ligar(){
     els("#seg-tipo button").forEach(x=>x.setAttribute("aria-pressed", String(x===b)));
     renderLancar();
   });
+  el("#ed-fechar").onclick = ()=>{ el("#dlg-editar").close(); edAtual=null; };
+  el("#ed-cancelar").onclick = ()=>{ el("#dlg-editar").close(); edAtual=null; };
+  el("#ed-salvar").onclick = salvarEditor;
+  el("#ed-apagar").onclick = async ()=>{
+    if(!edAtual) return;
+    const alvo = edAtual.tipo+":"+edAtual.id;
+    el("#dlg-editar").close();
+    if(await confirmar("Apagar lançamento","Isso remove o item e recalcula tudo. Não dá para desfazer.")) apagar(alvo);
+    edAtual = null;
+  };
+  ["#ed-valor","#ed-parcelas","#ed-comp","#ed-cartao"].forEach(q=>{
+    el(q).addEventListener("input", previaEditor);
+    el(q).addEventListener("change", previaEditor);
+  });
+
   document.addEventListener("click", async e=>{
+    const ed = e.target.closest("[data-editar]");
+    if(ed && !e.target.closest("[data-apagar]")){
+      const [o, r] = ed.dataset.editar.split(":");
+      abrirEditor(o, r); return;
+    }
     const a = e.target.closest("[data-apagar]");
     if(a){ if(await confirmar("Apagar lançamento","Isso remove o item e recalcula tudo. Não dá para desfazer.")) apagar(a.dataset.apagar); return; }
     const c = e.target.closest("[data-apagar-cartao]");
@@ -1984,12 +2172,13 @@ function ligar(){
       torrada(n+"x de "+R$(valor/n)+" lançadas.");
     }else{
       S.lancamentos.push({id:id(), tipo: tipo==="entrada"?"entrada":"gasto", dela: tipo!=="entrada" && el("#f-quem").value==="ela",
-        desc, valor, cat:el("#f-cat").value, data, comp:compDe(data), fixo: el("#f-fixo").checked});
+        desc, valor, cat:el("#f-cat").value, data, comp:compDe(data), fixo: el("#f-fixo").checked,
+        reemb: tipo==="entrada" && el("#f-reemb").checked});
       torrada(tipo==="entrada"?"Entrada lançada.":"Gasto lançado.");
     }
     agendarSalvar();
     el("#f-desc").value=""; el("#f-valor").value=""; el("#f-avista").value=""; el("#f-parcelas").value="1";
-    el("#f-atual").value="1"; el("#f-comp").value=""; el("#f-fixo").checked=false; el("#q-texto").value="";
+    el("#f-atual").value="1"; el("#f-comp").value=""; el("#f-fixo").checked=false; el("#f-reemb").checked=false; el("#q-texto").value="";
     mes = compDe(data);
     aba = "painel"; render(); window.scrollTo({top:0,behavior:"smooth"});
   });
