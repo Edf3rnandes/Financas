@@ -386,11 +386,15 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
             </select></div>
             <div class="campo campo-atual"><label for="f-atual">Estou na parcela</label><input id="f-atual" class="mono" type="number" min="1" max="480" value="1"></div>
             <div class="campo campo-parcelas"><label for="f-parcelas" id="f-parcelas-rot">Parcelas</label><input id="f-parcelas" class="mono" type="number" min="1" max="480" value="1"></div>
+            <div class="campo campo-fim oculto"><label for="f-fim">Até (opcional)</label><input id="f-fim" type="month"></div>
             <div class="campo campo-avista"><label for="f-avista" id="f-avista-rot">Preço à vista (opcional)</label><input id="f-avista" class="mono" inputmode="decimal" placeholder="para calcular juros"></div>
             <div class="campo campo-comp"><label for="f-comp">1ª parcela em</label><input id="f-comp" type="month"></div>
           </div>
           <div class="linha-campos linha-fixo" style="margin-top:11px">
             <label class="check"><input type="checkbox" id="f-fixo"> <span id="f-fixo-rot">Repete todo mês (fixo)</span></label>
+          </div>
+          <div class="linha-campos linha-assin oculto" style="margin-top:11px">
+            <label class="check"><input type="checkbox" id="f-assinatura"> <span>É assinatura — cobra todo mês no cartão, sem fim de parcelas</span></label>
           </div>
           <div class="linha-campos linha-reemb oculto" style="margin-top:11px">
             <label class="check"><input type="checkbox" id="f-reemb"> <span id="f-reemb-rot">É o que ela me paga de volta</span></label>
@@ -609,12 +613,18 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
         <option value="financiamento">Financiamento</option><option value="emprestimo">Empréstimo</option>
         <option value="imposto">Imposto parcelado</option><option value="consorcio">Consórcio</option><option value="outro">Outro carnê</option>
       </select></div>
-      <div class="campo"><label for="ed-parcelas">Nº de parcelas</label><input id="ed-parcelas" class="mono" type="number" min="1" max="480"></div>
+      <div class="campo ed-parcelas"><label for="ed-parcelas">Nº de parcelas</label><input id="ed-parcelas" class="mono" type="number" min="1" max="480"></div>
       <div class="campo"><label for="ed-comp" id="ed-comp-rot">1ª parcela na fatura de</label><input id="ed-comp" type="month"></div>
       <div class="campo ed-avista"><label for="ed-avista" id="ed-avista-rot">Preço à vista (opcional)</label><input id="ed-avista" class="mono" inputmode="decimal"></div>
     </div>
+    <div class="linha-campos ed-assin" style="margin-top:11px">
+      <label class="check"><input type="checkbox" id="ed-recorrente"> <span>É assinatura — cobra todo mês, sem fim de parcelas</span></label>
+    </div>
     <div class="linha-campos ed-fixo" style="margin-top:11px">
       <label class="check"><input type="checkbox" id="ed-fixo"> <span id="ed-fixo-rot">Repete todo mês</span></label>
+    </div>
+    <div class="linha-campos ed-fim" style="margin-top:11px">
+      <div class="campo"><label for="ed-fim">Até (deixe vazio para não ter fim)</label><input id="ed-fim" type="month"></div>
     </div>
     <div class="linha-campos ed-reemb" style="margin-top:11px">
       <label class="check"><input type="checkbox" id="ed-reemb"> <span id="ed-reemb-rot">É reembolso dela</span></label>
@@ -767,7 +777,9 @@ function parcelasPagasEm(comp, filtro){
     if(filtro && !filtro(c.dela)) continue;
     const faturaDe = compSoma(comp, -deslocDe(c));
     const k = compDelta(c.compInicio, faturaDe);
-    if(k>=0 && k<c.parcelas) out.push({compra:c, n:k+1, valor:valorParcela(c,k+1), faturaDe});
+    if(c.recorrente){
+      if(k>=0 && (!c.fim || faturaDe <= c.fim)) out.push({compra:c, n:k+1, valor:c.valorTotal, faturaDe});
+    }else if(k>=0 && k<c.parcelas) out.push({compra:c, n:k+1, valor:valorParcela(c,k+1), faturaDe});
   }
   return out;
 }
@@ -777,7 +789,9 @@ function parcelasDe(comp, filtro){
   for(const c of S.compras){
     if(filtro && !filtro(c.dela)) continue;
     const k = compDelta(c.compInicio, comp);
-    if(k>=0 && k<c.parcelas) out.push({compra:c, n:k+1, valor:valorParcela(c,k+1)});
+    if(c.recorrente){
+      if(k>=0 && (!c.fim || comp <= c.fim)) out.push({compra:c, n:k+1, valor:c.valorTotal});
+    }else if(k>=0 && k<c.parcelas) out.push({compra:c, n:k+1, valor:valorParcela(c,k+1)});
   }
   return out;
 }
@@ -800,7 +814,7 @@ function faturaFechando(cartaoId, comp, filtro){
   return parcelasDe(comp, filtro).filter(p=>p.compra.cartao===cartaoId).reduce((s,p)=>s+p.valor,0);
 }
 function ativoNoMes(l, comp){
-  if(l.fixo) return l.comp <= comp;
+  if(l.fixo) return l.comp <= comp && (!l.fim || comp <= l.fim);
   return l.comp === comp;
 }
 function fluxo(comp, filtro){
@@ -817,6 +831,7 @@ function fluxo(comp, filtro){
 function ultimaComp(so){
   let u = null;
   for(const c of S.compras){
+    if(c.recorrente) continue;
     if(so==="cartao" && c.fin) continue;
     if(so==="fin" && !c.fin) continue;
     const f = compSoma(c.compInicio, c.parcelas-1+deslocDe(c));
@@ -827,6 +842,7 @@ function ultimaComp(so){
 function dividaFutura(comp, filtro){
   let t = 0;
   for(const c of S.compras){
+    if(c.recorrente) continue;
     if(filtro && !filtro(c.dela)) continue;
     const d = deslocDe(c);
     for(let n=1;n<=c.parcelas;n++){
@@ -1168,7 +1184,7 @@ function montarLinha(desc, valor, data, compRef, forcar){
   return {
     usar: !ignorar, desc: desc || "Sem descrição", valor: Math.abs(valor),
     data: data || (compRef+"-15"), parcAtual, parcTotal,
-    cat: categoriaDe(desc), dela: false, ignorar
+    cat: categoriaDe(desc), dela: false, rec: categoriaDe(desc)==="Assinaturas" && !parcTotal, ignorar
   };
 }
 
@@ -1199,13 +1215,15 @@ function renderImpTabela(){
   const opcoes = c => S.config.cats.map(x=>'<option'+(x===c?" selected":"")+'>'+esc(x)+'</option>').join("");
   el("#im-tabela").className = "im-tab";
   el("#im-tabela").innerHTML =
-    '<thead><tr><th></th><th>Descrição</th><th>Categoria</th><th>Parcela</th><th style="text-align:right">Valor</th><th>'+esc(nomeEla())+'</th></tr></thead><tbody>'
+    '<thead><tr><th></th><th>Descrição</th><th>Categoria</th><th>Parcela</th><th>Mensal</th><th style="text-align:right">Valor</th><th>'+esc(nomeEla())+'</th></tr></thead><tbody>'
     + impLinhas.map((l,i)=>
       '<tr class="'+(l.usar?"":"fora")+'">'
       + '<td><input type="checkbox" data-imp="usar" data-i="'+i+'"'+(l.usar?" checked":"")+' aria-label="Importar esta linha"></td>'
       + '<td><input type="text" data-imp="desc" data-i="'+i+'" value="'+esc(l.desc)+'"></td>'
       + '<td><select data-imp="cat" data-i="'+i+'">'+opcoes(l.cat)+'</select></td>'
       + '<td class="p">'+(l.parcTotal>1 ? l.parcAtual+"/"+l.parcTotal : "—")+'</td>'
+      + '<td>'+(l.parcTotal>1 ? '<span style="color:var(--ink-3)">—</span>'
+          : '<input type="checkbox" data-imp="rec" data-i="'+i+'"'+(l.rec?" checked":"")+' aria-label="Cobra todo mês">')+'</td>'
       + '<td class="n">'+R$(l.valor)+'</td>'
       + '<td><input type="checkbox" data-imp="dela" data-i="'+i+'"'+(l.dela?" checked":"")+' aria-label="Gasto de outra pessoa"></td>'
       + '</tr>').join("")
@@ -1221,7 +1239,14 @@ function importarLinhas(){
     const parcelas = l.parcTotal>1 ? l.parcTotal : 1;
     const atual = l.parcTotal>1 ? l.parcAtual : 1;
     const compInicio = compSoma(comp, -(atual-1));
-    const dup = S.compras.some(c=>c.cartao===cartao && c.desc===l.desc && c.compInicio===compInicio
+    if(l.rec && l.parcTotal<=1){
+      const dupR = S.compras.some(c=>c.recorrente && c.cartao===cartao && c.desc===l.desc);
+      if(dupR){ pulados++; continue; }
+      S.compras.push({id:id(), recorrente:true, cartao, dela:l.dela, desc:l.desc,
+        valorTotal:l.valor, avista:0, parcelas:1, fim:"", compInicio:comp, cat:l.cat, data:l.data});
+      n++; continue;
+    }
+    const dup = S.compras.some(c=>!c.recorrente && c.cartao===cartao && c.desc===l.desc && c.compInicio===compInicio
       && Math.abs(valorParcela(c,1) - l.valor) < 0.02 && c.parcelas===parcelas);
     if(dup){ pulados++; continue; }
     S.compras.push({id:id(), cartao, dela:l.dela, desc:l.desc,
@@ -1254,11 +1279,16 @@ function abrirEditor(origem, ref){
   const ehParc = !!compra;
   const ehFin = ehParc && !!compra.fin;
 
-  el("#ed-titulo").textContent = ehEntrada ? "Editar entrada" : ehParc ? (ehFin?"Editar "+rotuloDivida(compra).toLowerCase():"Editar compra no cartão") : "Editar gasto";
-  el("#ed-sub").textContent = ehParc ? compra.parcelas+"x" : (lanc.fixo ? "fixo" : "avulso");
+  const ehAssin = ehParc && !!compra.recorrente;
+  el("#ed-titulo").textContent = ehEntrada ? "Editar entrada"
+    : ehAssin ? "Editar assinatura"
+    : ehParc ? (ehFin?"Editar "+rotuloDivida(compra).toLowerCase():"Editar compra no cartão") : "Editar gasto";
+  el("#ed-sub").textContent = ehAssin ? "todo mês" : ehParc ? compra.parcelas+"x" : (lanc.fixo ? "fixo" : "avulso");
+  el("#ed-recorrente").checked = ehAssin;
+  el("#ed-fim").value = (o.fim || "");
   el("#ed-desc").value = o.desc || "";
-  el("#ed-valor-rot").textContent = ehParc ? "Valor da parcela (R$)" : "Valor (R$)";
-  el("#ed-valor").value = (ehParc ? valorParcela(compra,1) : o.valor).toFixed(2).replace(".",",");
+  el("#ed-valor-rot").textContent = ehAssin ? "Valor por mês (R$)" : ehParc ? "Valor da parcela (R$)" : "Valor (R$)";
+  el("#ed-valor").value = (ehParc ? (ehAssin ? compra.valorTotal : valorParcela(compra,1)) : o.valor).toFixed(2).replace(".",",");
   el("#ed-data").value = o.data || iso(hoje());
   selCats(el("#ed-cat"), o.cat, ehEntrada ? S.config.catsEnt : S.config.cats);
   el("#ed-quem").innerHTML = '<option value="eu">Eu</option><option value="ela">'+esc(nomeEla())+'</option>';
@@ -1271,7 +1301,7 @@ function abrirEditor(origem, ref){
   if(ehParc){
     el("#ed-parcelas").value = compra.parcelas;
     el("#ed-comp").value = compra.compInicio;
-    el("#ed-comp-rot").textContent = ehFin ? "1ª parcela em" : "1ª parcela na fatura de";
+    el("#ed-comp-rot").textContent = ehAssin ? "Começou na fatura de" : ehFin ? "1ª parcela em" : "1ª parcela na fatura de";
     el("#ed-avista-rot").textContent = ehFin ? "Valor financiado (opcional)" : "Preço à vista (opcional)";
     el("#ed-avista").value = compra.avista ? String(compra.avista).replace(".",",") : "";
     el("#ed-cartao").innerHTML = S.cartoes.map(c=>'<option value="'+c.id+'"'+(c.id===compra.cartao?" selected":"")+'>'+esc(c.nome)+'</option>').join("");
@@ -1280,8 +1310,11 @@ function abrirEditor(origem, ref){
   els(".ed-parc").forEach(n=>n.classList.toggle("oculto", !ehParc));
   els(".ed-cartao").forEach(n=>n.classList.toggle("oculto", !ehParc || ehFin));
   els(".ed-tipodiv").forEach(n=>n.classList.toggle("oculto", !ehFin));
-  els(".ed-avista").forEach(n=>n.classList.toggle("oculto", !ehParc));
+  els(".ed-avista").forEach(n=>n.classList.toggle("oculto", !ehParc || ehAssin));
+  els(".ed-assin").forEach(n=>n.classList.toggle("oculto", !ehParc || ehFin));
+  els(".ed-parcelas").forEach(n=>n.classList.toggle("oculto", ehAssin));
   els(".ed-fixo").forEach(n=>n.classList.toggle("oculto", ehParc));
+  els(".ed-fim").forEach(n=>n.classList.toggle("oculto", !(ehAssin || (!!lanc && lanc.fixo))));
   els(".ed-reemb").forEach(n=>n.classList.toggle("oculto", !ehEntrada));
   els(".ed-quem").forEach(n=>n.classList.toggle("oculto", ehEntrada));
   els(".ed-data").forEach(n=>n.classList.toggle("oculto", false));
@@ -1296,6 +1329,13 @@ function previaEditor(){
   const n = Math.max(1, parseInt(el("#ed-parcelas").value||"1",10));
   const c0 = el("#ed-comp").value || compra.compInicio;
   const d = compra.fin ? 0 : deslocCartao(el("#ed-cartao").value || compra.cartao);
+  if(el("#ed-recorrente").checked){
+    const f0 = el("#ed-fim").value;
+    box.innerHTML = "<span>◆</span><span><b>"+R$(parcela)+"</b> por mês, ou <b>"+R$(parcela*12)+"</b> por ano. "
+      + "Sai da conta a partir de <b>"+compRotulo(compSoma(c0,d))+"</b>"
+      + (f0 ? ", até <b>"+compRotulo(compSoma(f0,d))+"</b>." : ", sem data de fim.")+"</span>";
+    box.classList.remove("oculto"); return;
+  }
   const fim = compSoma(c0, n-1+d);
   const prim = compSoma(c0, d);
   box.innerHTML = "<span>◆</span><span>Total de <b>"+R$(parcela*n)+"</b> em "+n+"x. "
@@ -1316,11 +1356,14 @@ function salvarEditor(){
     if(l.tipo==="entrada"){ l.reemb = el("#ed-reemb").checked; l.dela = false; }
     else l.dela = el("#ed-quem").value==="ela";
     l.fixo = el("#ed-fixo").checked;
+    l.fim = l.fixo ? (el("#ed-fim").value || "") : "";
   }else{
     const c = S.compras.find(x=>x.id===edAtual.id); if(!c) return;
-    const n = Math.max(1, parseInt(el("#ed-parcelas").value||"1",10));
-    c.desc = desc; c.parcelas = n;
-    c.valorTotal = Math.round(valor*n*100)/100;
+    const rec = !c.fin && el("#ed-recorrente").checked;
+    const n = rec ? 1 : Math.max(1, parseInt(el("#ed-parcelas").value||"1",10));
+    c.desc = desc; c.parcelas = n; c.recorrente = rec;
+    c.fim = rec ? (el("#ed-fim").value || "") : "";
+    c.valorTotal = rec ? valor : Math.round(valor*n*100)/100;
     c.avista = num(el("#ed-avista").value)||0;
     c.compInicio = el("#ed-comp").value || c.compInicio;
     c.data = el("#ed-data").value || c.data;
@@ -1350,6 +1393,9 @@ function abrirDetalhe(titulo, sub, itens){
   ).join("") : '<div class="vazio"><b>Nada aqui neste mês</b>Nenhum lançamento se encaixa neste filtro.</div>';
   dlg.showModal();
 }
+function assinaturasDoMes(comp, filtro){
+  return parcelasPagasEm(comp, filtro).filter(p=>p.compra.recorrente);
+}
 function reembolsoDela(comp){
   return S.lancamentos.filter(l=>l.tipo==="entrada" && l.reemb && ativoNoMes(l,comp))
     .reduce((s,l)=>s+l.valor,0);
@@ -1371,7 +1417,7 @@ function itensParcelas(comp, f, filtroCompra){
     .map(p=>({
       icone: p.compra.fin ? "🏦" : "💳",
       titulo: p.compra.desc,
-      sub: (p.compra.cat||"") + " · " + p.n+"/"+p.compra.parcelas
+      sub: (p.compra.cat||"") + " · " + (p.compra.recorrente ? "assinatura" : p.n+"/"+p.compra.parcelas)
          + (p.compra.fin ? " · "+rotuloDivida(p.compra) : " · fatura de "+compRotulo(p.faturaDe,true))
          + (p.compra.dela ? " · "+esc(nomeEla()) : ""),
       valor: p.valor, sinal:"−"
@@ -1537,7 +1583,7 @@ function renderPainel(){
   }
   for(const p of parcelasPagasEm(mes, f)){
     movs.push({tipo:"parcela", fin:p.compra.fin, desc:p.compra.desc, cat:p.compra.cat, dela:p.compra.dela, valor:p.valor,
-      data:p.compra.data, extra:p.n+"/"+p.compra.parcelas,
+      data:p.compra.data, extra: p.compra.recorrente ? "assinatura" : p.n+"/"+p.compra.parcelas,
       fatura: p.compra.fin ? "" : "fatura de "+compRotulo(p.faturaDe,true),
       ref:p.compra.id, origem:"c"});
   }
@@ -1592,8 +1638,17 @@ function renderLancar(){
   el("#f-fixo-rot").textContent = tipo==="entrada" ? "Repete todo mês (salário, pró-labore)" : "Repete todo mês (fixo)";
   els(".linha-fixo").forEach(n=>n.classList.toggle("oculto", parc));
   els(".linha-reemb").forEach(n=>n.classList.toggle("oculto", tipo!=="entrada"));
+  els(".linha-assin").forEach(n=>n.classList.toggle("oculto", tipo!=="cartao"));
+  const assin = tipo==="cartao" && el("#f-assinatura").checked;
+  els(".campo-parcelas").forEach(n=>n.classList.toggle("oculto", assin));
+  els(".campo-avista").forEach(n=>n.classList.toggle("oculto", assin || !parc));
+  els(".campo-fim").forEach(n=>n.classList.toggle("oculto", !assin));
+  if(assin){
+    el("#f-valor-rot").textContent = "Valor por mês (R$)";
+    el("#f-comp-rot") && (el("#f-comp-rot").textContent = "");
+  }
   el("#f-reemb-rot").textContent = "É o que "+nomeEla()+" me paga de volta";
-  el("#f-valor-rot").textContent = tipo==="cartao" ? "Valor total da compra (R$)"
+  el("#f-valor-rot").textContent = tipo==="cartao" ? (el("#f-assinatura").checked ? "Valor por mês (R$)" : "Valor total da compra (R$)")
     : tipo==="fin" ? "Valor da parcela (R$)" : "Valor (R$)";
   el("#f-desc").placeholder = tipo==="fin" ? "Financiamento do carro" : "Mercado do mês";
   if(!el("#f-data").value) el("#f-data").value = iso(hoje());
@@ -1621,6 +1676,17 @@ function atualizarPrevia(){
     box.textContent = t; box.classList.remove("oculto"); return;
   }
   if(tipo!=="cartao"){ box.classList.add("oculto"); return; }
+  if(el("#f-assinatura").checked){
+    const v = num(el("#f-valor").value);
+    if(!v){ box.classList.add("oculto"); return; }
+    const cart0 = S.cartoes.find(c=>c.id===el("#f-cartao").value);
+    const c0 = primeiraComp(el("#f-data").value || iso(hoje()), cart0);
+    const fim0 = el("#f-fim").value;
+    box.textContent = R$(v)+" por mês a partir da fatura de "+compRotulo(c0)
+      + (fim0 ? " até "+compRotulo(fim0) : " · sem data de fim")
+      + " · "+R$(v*12)+" por ano";
+    box.classList.remove("oculto"); return;
+  }
   const total = num(el("#f-valor").value), n = Math.max(1, parseInt(el("#f-parcelas").value||"1",10));
   const cart = S.cartoes.find(c=>c.id===el("#f-cartao").value);
   const data = el("#f-data").value || iso(hoje());
@@ -1657,13 +1723,14 @@ function renderCartoes(){
 
 function renderParcelas(){
   const f = filtroAtual();
-  const abertas = S.compras.filter(c=> (!f || f(c.dela)) && compSoma(c.compInicio,c.parcelas-1+deslocDe(c)) >= mes);
+  const abertas = S.compras.filter(c=> (!f || f(c.dela)) && !c.recorrente && compSoma(c.compInicio,c.parcelas-1+deslocDe(c)) >= mes);
   const falta = dividaFutura(mes, f);
   el("#pc-falta").textContent = R$(falta);
   el("#pc-falta").className = "valor " + (falta>0?"neg":"pos");
   let fCart=0, fFin=0;
   for(const c of S.compras){
     if(f && !f(c.dela)) continue;
+    if(c.recorrente) continue;
     const d = deslocDe(c);
     for(let n=1;n<=c.parcelas;n++){
       if(compSoma(c.compInicio,n-1+d) >= mes){ if(c.fin) fFin += valorParcela(c,n); else fCart += valorParcela(c,n); }
@@ -1695,10 +1762,10 @@ function renderParcelas(){
       return '<tr class="clicavel" data-editar="c:'+c.id+'"><td><b>'+esc(c.desc)+'</b>'+(c.cat?' <span class="rot">'+esc(c.cat)+'</span>':'')+'</td>'
         + '<td>'+(c.fin? '<span class="pilula" style="background:var(--accent-soft);color:var(--accent)">'+esc(rotuloDivida(c))+'</span>' : esc(cart?cart.nome:"—"))+'</td>'
         + '<td>'+(c.dela? etiqueta(true) : '<span style="color:var(--ink-3)">eu</span>')+'</td>'
-        + '<td class="mono">'+(atual? atual+"/"+c.parcelas : "a partir de "+compRotulo(compSoma(c.compInicio,d),true))+'</td>'
-        + '<td class="n">'+R$(valorParcela(c, Math.max(1,atual)))+'</td>'
-        + '<td class="n">'+R$(c.valorTotal)+'</td>'
-        + '<td>'+cap(compRotulo(fim,true))+(fim<mes?' <span class="pilula n">quitado</span>':'')+'</td>'
+        + '<td class="mono">'+(c.recorrente? "mensal" : atual? atual+"/"+c.parcelas : "a partir de "+compRotulo(compSoma(c.compInicio,d),true))+'</td>'
+        + '<td class="n">'+R$(c.recorrente? c.valorTotal : valorParcela(c, Math.max(1,atual)))+'</td>'
+        + '<td class="n">'+(c.recorrente? R$(c.valorTotal*12)+"/ano" : R$(c.valorTotal))+'</td>'
+        + '<td>'+(c.recorrente? (c.fim? cap(compRotulo(compSoma(c.fim,d),true)) : "sem fim") : cap(compRotulo(fim,true))+(fim<mes?' <span class="pilula n">quitado</span>':''))+'</td>'
         + '<td><button type="button" class="btn fantasma mini" data-apagar="c:'+c.id+'">✕</button></td></tr>';
     }).join("") + "</tbody>";
 }
@@ -1852,6 +1919,17 @@ function analisar(){
     }
   }
 
+  const assins = assinaturasDoMes(mes, f);
+  if(assins.length){
+    const mensal = assins.reduce((s,p)=>s+p.valor,0);
+    out.push({
+      nivel: renda>0 && mensal/renda > 0.05 ? "atencao" : "info",
+      titulo:"Assinaturas",
+      texto: assins.length+" assinatura"+(assins.length===1?"":"s")+" somando <b>"+R$(mensal)+"</b> por mês — <b>"+R$(mensal*12)+"</b> por ano. "
+        + (assins.length>3 ? "Vale abrir a lista e ver se você ainda usa todas." : "São cobranças que se renovam sozinhas; revise de tempos em tempos.")
+    });
+  }
+
   let juros=0;
   for(const c of S.compras){ if(c.avista && c.valorTotal>c.avista) juros += c.valorTotal-c.avista; }
   if(juros>0) out.push({nivel:"atencao",titulo:"Juros que você já aceitou",texto:"Somando as compras em que você informou o preço à vista, o parcelamento custou <b>"+R$(juros)+"</b> a mais. É o preço da conveniência — vale conferir se compensou."});
@@ -1961,7 +2039,9 @@ function exemplo(){
     {id:id(),dela:true,cartao:c1.id,desc:"Vestido e prova",valorTotal:2400,parcelas:8,compInicio:compSoma(m,-2),cat:"Casamento",data:iso(hoje())},
     {id:id(),dela:false,cartao:c2.id,desc:"Geladeira",valorTotal:4800,avista:4200,parcelas:10,compInicio:compSoma(m,-3),cat:"Casa",data:iso(hoje())},
     {id:id(),dela:false,fin:true,tipoDiv:"financiamento",cartao:"",desc:"Financiamento do carro",valorTotal:60000,avista:42000,parcelas:48,compInicio:compSoma(m,-17),cat:"Carro",data:iso(hoje())},
-    {id:id(),dela:false,fin:true,tipoDiv:"imposto",cartao:"",desc:"IPVA parcelado",valorTotal:2400,parcelas:3,compInicio:compSoma(m,-1),cat:"Impostos",data:iso(hoje())}
+    {id:id(),dela:false,fin:true,tipoDiv:"imposto",cartao:"",desc:"IPVA parcelado",valorTotal:2400,parcelas:3,compInicio:compSoma(m,-1),cat:"Impostos",data:iso(hoje())},
+    {id:id(),dela:false,recorrente:true,cartao:c1.id,desc:"Netflix",valorTotal:59.90,parcelas:1,fim:"",compInicio:compSoma(m,-6),cat:"Assinaturas",data:iso(hoje())},
+    {id:id(),dela:false,recorrente:true,cartao:c1.id,desc:"Spotify",valorTotal:34.90,parcelas:1,fim:"",compInicio:compSoma(m,-6),cat:"Assinaturas",data:iso(hoje())}
   ];
   agendarSalvar(); render(); torrada("Dados de exemplo carregados.");
 }
@@ -2018,7 +2098,7 @@ function ligar(){
     const itens = parcelasDe(mes, f).filter(p=>p.compra.cartao===c.id)
       .sort((a,b)=>b.valor-a.valor)
       .map(p=>({icone:"🧾", titulo:p.compra.desc,
-        sub:(p.compra.cat||"")+" · "+p.n+"/"+p.compra.parcelas+(p.compra.dela?" · "+esc(nomeEla()):""),
+        sub:(p.compra.cat||"")+" · "+(p.compra.recorrente?"assinatura":p.n+"/"+p.compra.parcelas)+(p.compra.dela?" · "+esc(nomeEla()):""),
         valor:p.valor, sinal:"−"}));
     abrirDetalhe("Fatura fechando · "+c.nome, "você paga em "+compRotulo(compSoma(mes, deslocCartao(c.id))), itens);
   });
@@ -2046,7 +2126,18 @@ function ligar(){
     if(await confirmar("Apagar lançamento","Isso remove o item e recalcula tudo. Não dá para desfazer.")) apagar(alvo);
     edAtual = null;
   };
-  ["#ed-valor","#ed-parcelas","#ed-comp","#ed-cartao"].forEach(q=>{
+  el("#ed-recorrente").addEventListener("change", ()=>{
+    const rec = el("#ed-recorrente").checked;
+    els(".ed-parcelas").forEach(n=>n.classList.toggle("oculto", rec));
+    els(".ed-avista").forEach(n=>n.classList.toggle("oculto", rec));
+    els(".ed-fim").forEach(n=>n.classList.toggle("oculto", !rec));
+    el("#ed-valor-rot").textContent = rec ? "Valor por mês (R$)" : "Valor da parcela (R$)";
+    previaEditor();
+  });
+  el("#ed-fixo").addEventListener("change", ()=>{
+    els(".ed-fim").forEach(n=>n.classList.toggle("oculto", !el("#ed-fixo").checked));
+  });
+  ["#ed-valor","#ed-parcelas","#ed-comp","#ed-cartao","#ed-fim"].forEach(q=>{
     el(q).addEventListener("input", previaEditor);
     el(q).addEventListener("change", previaEditor);
   });
@@ -2100,6 +2191,7 @@ function ligar(){
     if(!campo || !impLinhas[i]) return;
     if(campo==="usar"){ impLinhas[i].usar = t.checked; renderImpTabela(); }
     else if(campo==="dela") impLinhas[i].dela = t.checked;
+    else if(campo==="rec") impLinhas[i].rec = t.checked;
     else impLinhas[i][campo] = t.value;
     if(campo==="dela") renderImpTabela();
   });
@@ -2141,7 +2233,8 @@ function ligar(){
     };
   }
 
-  ["#f-valor","#f-parcelas","#f-atual","#f-cartao","#f-data","#f-comp","#f-avista"].forEach(q=>{
+  el("#f-assinatura").addEventListener("change", renderLancar);
+  ["#f-valor","#f-parcelas","#f-atual","#f-cartao","#f-data","#f-comp","#f-avista","#f-fim"].forEach(q=>{
     el(q).addEventListener("input", atualizarPrevia);
     el(q).addEventListener("change", atualizarPrevia);
   });
@@ -2163,8 +2256,20 @@ function ligar(){
     }else if(tipo==="cartao"){
       const cartao = el("#f-cartao").value;
       if(!cartao){ torrada("Cadastre um cartão antes."); aba="cartoes"; render(); return; }
-      const n = Math.max(1, parseInt(el("#f-parcelas").value||"1",10));
       const cart = S.cartoes.find(c=>c.id===cartao);
+      if(el("#f-assinatura").checked){
+        S.compras.push({id:id(), recorrente:true, dela: el("#f-quem").value==="ela", cartao, desc,
+          valorTotal:valor, avista:0, parcelas:1,
+          compInicio: el("#f-comp").value || primeiraComp(data, cart),
+          fim: el("#f-fim").value || "", cat: el("#f-cat").value, data});
+        torrada("Assinatura de "+R$(valor)+" por mês lançada.");
+        agendarSalvar();
+        el("#f-desc").value=""; el("#f-valor").value=""; el("#f-fim").value=""; el("#f-assinatura").checked=false;
+        el("#q-texto").value="";
+        mes = compDe(data); aba = "painel"; render(); window.scrollTo({top:0,behavior:"smooth"});
+        return;
+      }
+      const n = Math.max(1, parseInt(el("#f-parcelas").value||"1",10));
       S.compras.push({id:id(), dela: el("#f-quem").value==="ela", cartao, desc, valorTotal:valor,
         avista:num(el("#f-avista").value)||0, parcelas:n,
         compInicio: el("#f-comp").value || primeiraComp(data, cart),
