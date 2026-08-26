@@ -1,0 +1,18 @@
+# backups locais do app — nunca versione seus dados financeiros
+nosso-caixa-*.json
+*.backup.json
+dados/
+
+# lixo de sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# editores
+.vscode/
+.idea/
+*.swp
+
+# node (caso você adicione ferramentas depois)
+node_modules/
+npm-debug.log*

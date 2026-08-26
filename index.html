@@ -193,6 +193,14 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:none;
 .im-tab input[type="checkbox"]{width:17px;height:17px}
 .im-tab tr.fora{opacity:.42}
 .im-tab .p{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accent);font-weight:600}
+.passo-a-passo{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
+.passo-a-passo summary{cursor:pointer;font-size:13.5px;font-weight:600;color:var(--accent);list-style:none}
+.passo-a-passo summary::-webkit-details-marker{display:none}
+.passo-a-passo summary::before{content:"▸ ";color:var(--ink-3)}
+.passo-a-passo[open] summary::before{content:"▾ "}
+.passo-a-passo ol{margin:12px 0 0;padding-left:20px;color:var(--ink-2);font-size:13.5px;line-height:1.65}
+.passo-a-passo li{margin-bottom:7px}
+.passo-a-passo li::marker{color:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:12px}
 .ajuda-tipo{margin:0 0 14px;font-size:13px;color:var(--ink-2);line-height:1.55;padding:10px 12px;background:var(--surface-2);border-radius:9px;border-left:3px solid var(--accent)}
 .dica-parse{font-size:12.5px;color:var(--ink-3);margin-top:8px;line-height:1.55}
 .dica-parse code{background:var(--surface-3);padding:1.5px 5px;border-radius:4px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--ink-2)}
@@ -287,8 +295,8 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
     <div class="aviso alerta oculto" id="aviso-local">
       <span>⚠</span>
       <span><b>Esta cópia não sincroniza.</b> Os lançamentos ficam guardados só neste navegador, neste aparelho.
-      Para ver o mesmo no celular e no computador, use o endereço do app no Claude — e leve os dados daqui
-      por <b>Ajustes → Baixar backup</b>.</span>
+      Para ver o mesmo no celular e no computador, ligue a sincronização em
+      <b>Ajustes → Sincronizar pelo GitHub</b> — leva dois minutos e vale para qualquer navegador.</span>
     </div>
     <div class="grade-resumo">
       <div class="card saldo">
@@ -598,6 +606,43 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
       </div>
     </div>
     <div class="card">
+      <div class="card-cab"><h2>Sincronizar pelo GitHub</h2><span class="rot" id="gh-estado"></span></div>
+      <div class="card-corpo">
+        <p style="margin:0 0 13px;color:var(--ink-2);font-size:13.5px;line-height:1.6">
+          Guarda os seus lançamentos num arquivo dentro de um repositório <b>privado</b> seu.
+          Com isso o app fica igual no computador e no celular, em qualquer navegador, sem depender de mais nada.
+        </p>
+        <div class="linha-campos">
+          <div class="campo"><label for="gh-owner">Seu usuário no GitHub</label><input id="gh-owner" placeholder="Edf3rnandes" autocomplete="off" spellcheck="false"></div>
+          <div class="campo"><label for="gh-repo">Repositório privado dos dados</label><input id="gh-repo" placeholder="financas-dados" autocomplete="off" spellcheck="false"></div>
+          <div class="campo"><label for="gh-caminho">Nome do arquivo</label><input id="gh-caminho" placeholder="dados.json" autocomplete="off" spellcheck="false"></div>
+          <div class="campo"><label for="gh-token">Chave de acesso</label><input id="gh-token" type="password" placeholder="github_pat_…" autocomplete="off" spellcheck="false"></div>
+        </div>
+        <div class="aviso alerta" style="margin-top:13px">
+          <span>⚠</span>
+          <span>A chave fica guardada <b>só neste navegador</b> — não vai no backup nem para lugar nenhum.
+          Quem tiver acesso a este computador consegue lê-la, então crie a chave <b>só com acesso a esse repositório</b>
+          e com data de validade. Em cada aparelho novo você cola a chave uma vez.</span>
+        </div>
+        <div class="acoes">
+          <button type="button" class="btn" id="gh-conectar">Conectar</button>
+          <button type="button" class="btn fantasma" id="gh-testar">Sincronizar agora</button>
+          <button type="button" class="btn perigo" id="gh-sair">Desconectar</button>
+        </div>
+        <details class="passo-a-passo">
+          <summary>Como criar a chave, passo a passo</summary>
+          <ol>
+            <li>No GitHub, crie um repositório <b>privado</b> novo só para os dados — sugestão de nome: <code>financas-dados</code>. Pode ficar vazio.</li>
+            <li>Vá em <b>github.com/settings/personal-access-tokens</b> → <b>Generate new token</b> → <b>Fine-grained</b>.</li>
+            <li>Em <i>Repository access</i>, escolha <b>Only select repositories</b> e marque só o repositório dos dados.</li>
+            <li>Em <i>Permissions → Repository permissions</i>, ache <b>Contents</b> e deixe em <b>Read and write</b>.</li>
+            <li>Gere, copie a chave (começa com <code>github_pat_</code>) e cole aqui em cima. Ela só aparece uma vez.</li>
+            <li>Clique em <b>Conectar</b>. No celular, abra o app e repita só o passo de colar a chave.</li>
+          </ol>
+        </details>
+      </div>
+    </div>
+    <div class="card">
       <div class="card-cab"><h2>Backup</h2></div>
       <div class="card-corpo">
         <p style="margin:0 0 12px;color:var(--ink-2);font-size:13.5px">Baixe uma cópia dos seus dados antes de qualquer mudança grande no app.</p>
@@ -699,7 +744,7 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
 /* ===================== estado ===================== */
 const PADRAO = {
   v:2, updatedAt:0,
-  config:{nomeEla:"Noiva", faturaNoVencimento:true,
+  config:{nomeEla:"Noiva", faturaNoVencimento:true, gh:{owner:"",repo:"",caminho:"dados.json",ramo:"main"},
     cats:["Mercado","Casa","Filho","Pensão","Escola","Carro","Gasolina","Saúde","Impostos","Restaurante","Lazer","Roupas","Assinaturas","Beleza","Casamento","Pets","Outros"],
     catsEnt:["Salário","Pró-labore","Dividendos","Freela","Reembolso","Outros"]},
   cartoes:[], lancamentos:[], compras:[], lixo:{}, pagos:{}
@@ -729,6 +774,8 @@ function clone(o){ return JSON.parse(JSON.stringify(o)); }
 function normaliza(e){
   const s = Object.assign(clone(PADRAO), e||{});
   s.config = Object.assign(clone(PADRAO.config), (e&&e.config)||{});
+  s.config.gh = Object.assign({owner:"",repo:"",caminho:"dados.json",ramo:"main"}, s.config.gh||{});
+  if(s.config.gh.token) delete s.config.gh.token;   // token nunca viaja junto
   s.cartoes = Array.isArray(s.cartoes)?s.cartoes:[];
   s.lancamentos = Array.isArray(s.lancamentos)?s.lancamentos:[];
   s.compras = Array.isArray(s.compras)?s.compras:[];
@@ -796,6 +843,110 @@ function lerLocal(){
 }
 function gravarLocal(){
   try{ localStorage.setItem(CHAVE_LOCAL, JSON.stringify(S)); }catch(_){}
+}
+
+
+/* ===================== nuvem pelo GitHub ===================== */
+const CHAVE_GH = "nossocaixa:gh-token";
+let ghSha = "";
+function ghToken(){ try{ return localStorage.getItem(CHAVE_GH) || ""; }catch(_){ return ""; } }
+function ghGuardaToken(t){ try{ t ? localStorage.setItem(CHAVE_GH, t) : localStorage.removeItem(CHAVE_GH); }catch(_){} }
+function ghCfg(){
+  const c = S.config.gh || {};
+  return {owner:(c.owner||"").trim(), repo:(c.repo||"").trim(),
+    caminho:(c.caminho||"dados.json").trim(), ramo:(c.ramo||"main").trim(), token:ghToken()};
+}
+function ghAtivo(){ const g = ghCfg(); return !!(g.owner && g.repo && g.token); }
+function ghCaminho(c){ return c.split("/").filter(Boolean).map(encodeURIComponent).join("/"); }
+async function ghApi(caminho, opts){
+  const g = ghCfg();
+  return fetch("https://api.github.com"+caminho, Object.assign({cache:"no-store"}, opts||{}, {
+    headers: Object.assign({
+      "Authorization":"Bearer "+g.token,
+      "Accept":"application/vnd.github+json",
+      "X-GitHub-Api-Version":"2022-11-28"
+    }, (opts&&opts.headers)||{})
+  }));
+}
+function ghErro(r){
+  if(r.status===401) return "a chave de acesso foi recusada (expirou ou está errada)";
+  if(r.status===403) return "a chave não tem permissão de escrita neste repositório";
+  if(r.status===404) return "não achei esse repositório (confira usuário e nome, e se a chave dá acesso a ele)";
+  if(r.status===409) return "houve uma alteração ao mesmo tempo";
+  return "o GitHub respondeu "+r.status;
+}
+function b64paraTexto(b){ return decodeURIComponent(escape(atob(String(b).replace(/\s/g,"")))); }
+function textoParaB64(t){ return btoa(unescape(encodeURIComponent(t))); }
+async function ghBaixar(){
+  const g = ghCfg();
+  const r = await ghApi("/repos/"+g.owner+"/"+g.repo+"/contents/"+ghCaminho(g.caminho)+"?ref="+encodeURIComponent(g.ramo)+"&t="+AGORA());
+  if(r.status===404){ ghSha = ""; return null; }
+  if(!r.ok) throw new Error(ghErro(r));
+  const j = await r.json();
+  ghSha = j.sha || "";
+  try{ return normaliza(JSON.parse(b64paraTexto(j.content))); }
+  catch(_){ throw new Error("o arquivo de dados no GitHub está ilegível"); }
+}
+async function ghSubir(estado){
+  const g = ghCfg();
+  const corpo = {
+    message: "Nosso Caixa — " + new Date().toISOString().slice(0,16).replace("T"," "),
+    content: textoParaB64(JSON.stringify(estado)),
+    branch: g.ramo
+  };
+  if(ghSha) corpo.sha = ghSha;
+  const r = await ghApi("/repos/"+g.owner+"/"+g.repo+"/contents/"+ghCaminho(g.caminho),
+    {method:"PUT", body: JSON.stringify(corpo)});
+  if(r.status===409 || r.status===422){ await ghBaixar().catch(()=>{}); const e = new Error("conflito"); e.code="conflict"; throw e; }
+  if(!r.ok) throw new Error(ghErro(r));
+  const j = await r.json();
+  ghSha = (j.content && j.content.sha) || ghSha;
+  return true;
+}
+async function salvarGH(){
+  if(salvando){ pendente = true; return; }
+  if(impressao(S) === ultimaPub){ marcarStatus(); return; }
+  salvando = true; marcarStatus();
+  try{
+    const remoto = await ghBaixar();
+    if(remoto){
+      const antes = impressao(S);
+      S = mesclar(S, remoto);
+      if(impressao(S) !== antes){ gravarLocal(); render(); }
+    }
+    const marca = impressao(S);
+    await ghSubir(S);
+    modo = "nuvem"; nuvemFalhou = false; ultimaSync = AGORA(); ultimaPub = marca;
+  }catch(e){
+    if(e && e.code==="conflict"){ pendente = true; }
+    else { modo = "local"; nuvemFalhou = true; torrada("GitHub: "+(e && e.message ? e.message : "não deu para salvar")); }
+  }
+  salvando = false; marcarStatus();
+  if(pendente){ pendente = false; setTimeout(salvar, 900); }
+}
+async function ghConectar(silencioso){
+  const g = ghCfg();
+  if(!g.owner || !g.repo || !g.token){ if(!silencioso) torrada("Preencha usuário, repositório e a chave."); return false; }
+  try{
+    const r = await ghApi("/repos/"+g.owner+"/"+g.repo);
+    if(!r.ok) throw new Error(ghErro(r));
+    const remoto = await ghBaixar();
+    if(remoto){
+      S = mesclar(S, remoto);
+      gravarLocal(); render();
+      if(!silencioso) torrada("Conectado — dados do GitHub juntados aqui.");
+    }else{
+      await ghSubir(S);
+      if(!silencioso) torrada("Conectado — criei o arquivo de dados no repositório.");
+    }
+    modo = "nuvem"; nuvemFalhou = false; ultimaSync = AGORA(); ultimaPub = impressao(S);
+    render();
+    return true;
+  }catch(e){
+    modo = "local"; nuvemFalhou = true; render();
+    if(!silencioso) torrada("GitHub: "+(e && e.message ? e.message : "não consegui conectar"));
+    return false;
+  }
 }
 
 /* ===================== utilidades ===================== */
@@ -983,6 +1134,7 @@ function agendarSalvar(){
   marcarStatus();
 }
 async function salvar(){
+  if(ghAtivo()) return salvarGH();
   if(!api || modo==="leitura") { marcarStatus(); return; }
   if(salvando){ pendente = true; return; }
   if(impressao(S) === ultimaPub){ marcarStatus(); return; }
@@ -1059,6 +1211,29 @@ async function baixarNuvem(){
 }
 // junta o que veio da nuvem com o que está aqui; devolve true se algo mudou
 async function sincronizar(silencioso){
+  if(ghAtivo()){
+    try{
+      const remoto = await ghBaixar();
+      ultimaSync = AGORA();
+      if(!remoto){
+        if(!silencioso) torrada("Ainda não havia dados no GitHub — mandei os daqui.");
+        ultimaPub = ""; agendarSalvar(); return false;
+      }
+      ultimaPub = impressao(remoto);
+      const antes = impressao(S);
+      S = mesclar(S, remoto);
+      const mudou = impressao(S) !== antes;
+      gravarLocal(); render();
+      modo = "nuvem"; nuvemFalhou = false;
+      if(impressao(S) !== ultimaPub) agendarSalvar();
+      if(!silencioso) torrada(mudou ? "Atualizado com o outro aparelho." : "Já estava tudo igual.");
+      return mudou;
+    }catch(e){
+      modo = "local"; nuvemFalhou = true; marcarStatus();
+      if(!silencioso) torrada("GitHub: "+(e && e.message ? e.message : "não consegui buscar"));
+      return false;
+    }
+  }
   if(!usaArquivo){
     // a cópia da nuvem é o próprio HTML publicado; recarregar a página é o que traz novidade
     if(!silencioso) torrada("Neste aparelho a atualização vem ao recarregar a página.");
@@ -1086,11 +1261,12 @@ async function sincronizar(silencioso){
 }
 function ligarPoll(){
   clearInterval(timerPoll);
-  timerPoll = setInterval(()=>{ if(!document.hidden && api && !salvando) sincronizar(true); }, 45000);
+  const podeSync = ()=> ghAtivo() || !!api;
+  timerPoll = setInterval(()=>{ if(!document.hidden && podeSync() && !salvando) sincronizar(true); }, 45000);
   document.addEventListener("visibilitychange", ()=>{
-    if(!document.hidden && api && !salvando && AGORA()-ultimaSync > 8000) sincronizar(true);
+    if(!document.hidden && podeSync() && !salvando && AGORA()-ultimaSync > 8000) sincronizar(true);
   });
-  window.addEventListener("online", ()=>{ if(api) sincronizar(true); });
+  window.addEventListener("online", ()=>{ if(podeSync()) sincronizar(true); });
 }
 
 /* ===================== leitor de texto ===================== */
@@ -1607,6 +1783,7 @@ function render(){
   if(aba==="projecao") renderProjecao();
   if(aba==="analise") renderAnalise();
   if(aba==="ajustes") renderAjustes();
+  el("#aviso-local").classList.toggle("oculto", ghAtivo() || !!api || !!(window.claude && window.claude.use));
   el("#fab").classList.toggle("oculto", aba==="lancar");
   marcarStatus();
 }
@@ -1646,8 +1823,6 @@ function renderAbas(){
 }
 
 function renderPainel(){
-  const semNuvem = !api && !(window.claude && window.claude.use);
-  el("#aviso-local").classList.toggle("oculto", !semNuvem);
   const f = filtroAtual(), fx = fluxo(mes, f);
   const saldo = fx.saldo;
   el("#p-saldo").textContent = R$(saldo);
@@ -2185,6 +2360,12 @@ function resumoTexto(){
 }
 
 function renderAjustes(){
+  const g = ghCfg();
+  el("#gh-owner").value = g.owner;
+  el("#gh-repo").value = g.repo;
+  el("#gh-caminho").value = g.caminho;
+  if(document.activeElement !== el("#gh-token")) el("#gh-token").value = g.token;
+  el("#gh-estado").textContent = ghAtivo() ? (nuvemFalhou ? "com erro" : "ligada") : "desligada";
   el("#aj-sync-rot").textContent = modo==="nuvem" ? "ligada" : modo==="leitura" ? "só leitura" : "desligada";
   el("#aj-sync-txt").innerHTML = modo==="nuvem"
     ? "Este aparelho está guardando na nuvem. O que você lançar aqui aparece nos outros aparelhos quando eles abrirem ou sincronizarem — e nada é apagado quando os dois têm coisas diferentes: eu junto os dois lados."
@@ -2278,7 +2459,7 @@ function ligar(){
   });
   el("#dl-fechar").onclick = ()=>el("#dlg-lista").close();
   el("#status").onclick = async ()=>{
-    if(!api){ torrada("Este aparelho está sem a nuvem — os dados ficam só aqui."); return; }
+    if(!api && !ghAtivo()){ torrada("Este aparelho está sem a nuvem — ligue em Ajustes → Sincronizar pelo GitHub."); return; }
     torrada("Procurando novidades…");
     await sincronizar(false);
   };
@@ -2504,6 +2685,30 @@ function ligar(){
     agendarSalvar(); render(); torrada("Cartão cadastrado.");
   });
 
+  el("#gh-conectar").onclick = async ()=>{
+    S.config.gh = {
+      owner: el("#gh-owner").value.trim(),
+      repo: el("#gh-repo").value.trim(),
+      caminho: el("#gh-caminho").value.trim() || "dados.json",
+      ramo: "main"
+    };
+    ghGuardaToken(el("#gh-token").value.trim());
+    ghSha = "";
+    S.updatedAt = AGORA(); gravarLocal();
+    torrada("Conectando ao GitHub…");
+    await ghConectar(false);
+  };
+  el("#gh-testar").onclick = async ()=>{
+    if(!ghAtivo()){ torrada("Conecte primeiro."); return; }
+    await sincronizar(false); renderAjustes();
+  };
+  el("#gh-sair").onclick = async ()=>{
+    if(await confirmar("Desconectar do GitHub","Os lançamentos continuam neste aparelho, mas param de ir para a nuvem. A chave é apagada daqui.")){
+      ghGuardaToken(""); ghSha = ""; modo = "local"; nuvemFalhou = false;
+      el("#gh-token").value = "";
+      render(); torrada("Desconectado.");
+    }
+  };
   el("#aj-sync").onclick = async ()=>{
     if(!api){ torrada("Sem nuvem neste aparelho."); return; }
     await sincronizar(false); renderAjustes();
@@ -2610,10 +2815,15 @@ function iniciar(){
   ligar();
   render();
   ultimaPub = impressao(embutido);
-  conectar().then(()=>{
+  if(ghAtivo()){
     ligarPoll();
-    return sincronizar(true).then(()=>{ if(impressao(S) !== ultimaPub) agendarSalvar(); });
-  });
+    ghConectar(true);
+  }else{
+    conectar().then(()=>{
+      ligarPoll();
+      return sincronizar(true).then(()=>{ if(impressao(S) !== ultimaPub) agendarSalvar(); });
+    });
+  }
 }
 if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar);
 else iniciar();

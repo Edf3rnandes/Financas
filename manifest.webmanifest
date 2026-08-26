@@ -1,0 +1,15 @@
+{
+  "name": "Nosso Caixa",
+  "short_name": "Nosso Caixa",
+  "description": "Controle financeiro de casal: entradas, gastos, faturas de cartão, parcelas e projeção de 12 meses.",
+  "lang": "pt-BR",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#EEF2F1",
+  "theme_color": "#0E6E7B",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
