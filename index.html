@@ -72,7 +72,8 @@ h1,h2,h3{margin:0;text-wrap:balance;font-weight:600;letter-spacing:-.015em}
 .topo-in{max-width:1080px;margin:0 auto;padding:10px 16px 0;display:flex;flex-wrap:wrap;gap:10px;align-items:center;position:relative}
 .marca{display:flex;align-items:center;gap:9px;margin-right:auto;font-weight:700;letter-spacing:-.02em;font-size:16px}
 .marca svg{display:block}
-.status{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-3);font-family:'IBM Plex Mono',monospace}
+.status{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-3);font-family:'IBM Plex Mono',monospace;background:none;border:0;cursor:pointer;padding:4px 6px;border-radius:99px}
+.status:hover{background:var(--surface-3);color:var(--ink-2)}
 .ponto{width:7px;height:7px;border-radius:50%;background:var(--pos)}
 .ponto.ocupado{background:var(--warn);animation:pulsa 1s infinite}
 .ponto.frio{background:var(--ink-3)}
@@ -237,6 +238,11 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
 .clicavel::after{content:"›";position:absolute;right:14px;top:14px;color:var(--ink-3);font-size:17px;line-height:1}
 .item.clicavel::after{top:50%;transform:translateY(-50%)}
 .item.clicavel{padding-right:30px}
+.marcar{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--line-forte);background:transparent;color:var(--ink-3);cursor:pointer;flex:none;display:grid;place-items:center;font-size:14px;line-height:1;padding:0}
+.marcar:hover{border-color:var(--pos);color:var(--pos)}
+.marcar[aria-pressed="true"]{background:var(--pos);border-color:var(--pos);color:#fff}
+.item.pago .desc b, .item.pago .num{opacity:.5}
+.item.pago .desc b{text-decoration:line-through;text-decoration-thickness:1px}
 .modal-corpo{padding:20px}
 .modal-corpo h2{font-size:17px;margin-bottom:5px}
 .modal-corpo p{color:var(--ink-2);font-size:13.5px;margin:0 0 14px}
@@ -253,7 +259,7 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
       </svg>
       Nosso Caixa
     </div>
-    <div class="status" id="status"><span class="ponto frio" id="ponto"></span><span id="status-txt">carregando</span></div>
+    <button type="button" class="status" id="status" title="Sincronizar agora"><span class="ponto frio" id="ponto"></span><span id="status-txt">carregando</span></button>
     <div class="seg" id="seg-ver"></div>
   </div>
   <div class="topo-in" style="padding-top:8px">
@@ -278,6 +284,12 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
 <main>
   <!-- PAINEL -->
   <section class="vista" id="v-painel">
+    <div class="aviso alerta oculto" id="aviso-local">
+      <span>⚠</span>
+      <span><b>Esta cópia não sincroniza.</b> Os lançamentos ficam guardados só neste navegador, neste aparelho.
+      Para ver o mesmo no celular e no computador, use o endereço do app no Claude — e leve os dados daqui
+      por <b>Ajustes → Baixar backup</b>.</span>
+    </div>
     <div class="grade-resumo">
       <div class="card saldo">
         <span class="rot">Sobra do mês</span>
@@ -294,6 +306,11 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
         <span class="rot">Saiu</span>
         <div class="valor neg" id="p-saiu">—</div>
         <div class="rot" style="margin-top:8px" id="p-saiu-sub"></div>
+      </div>
+      <div class="card saldo menor oculto clicavel" id="card-falta" role="button" tabindex="0">
+        <span class="rot">Ainda falta sair</span>
+        <div class="valor" id="p-falta">—</div>
+        <div class="rot" style="margin-top:8px" id="p-falta-sub"></div>
       </div>
       <div class="card saldo menor oculto clicavel" id="card-dela" role="button" tabindex="0">
         <span class="rot" id="p-dela-rot">Gastos dela</span>
@@ -574,12 +591,21 @@ dialog::backdrop{background:rgba(6,18,17,.55);backdrop-filter:blur(2px)}
       </div>
     </div>
     <div class="card">
+      <div class="card-cab"><h2>Sincronização</h2><span class="rot" id="aj-sync-rot"></span></div>
+      <div class="card-corpo">
+        <p style="margin:0 0 12px;color:var(--ink-2);font-size:13.5px;line-height:1.6" id="aj-sync-txt"></p>
+        <div class="acoes" style="margin-top:0"><button type="button" class="btn" id="aj-sync">Sincronizar agora</button></div>
+      </div>
+    </div>
+    <div class="card">
       <div class="card-cab"><h2>Backup</h2></div>
       <div class="card-corpo">
         <p style="margin:0 0 12px;color:var(--ink-2);font-size:13.5px">Baixe uma cópia dos seus dados antes de qualquer mudança grande no app.</p>
         <div class="acoes" style="margin-top:0">
           <button type="button" class="btn" id="aj-exportar">Baixar backup</button>
-          <button type="button" class="btn fantasma" id="aj-importar">Restaurar backup</button>
+          <label class="btn fantasma" for="aj-arquivo">Restaurar de um arquivo</label>
+          <input type="file" id="aj-arquivo" accept=".json,application/json,text/plain" class="oculto">
+          <button type="button" class="btn fantasma" id="aj-importar">Restaurar colando o texto</button>
           <button type="button" class="btn fantasma" id="aj-exemplo">Carregar dados de exemplo</button>
           <button type="button" class="btn perigo" id="aj-zerar">Apagar tudo</button>
         </div>
@@ -676,13 +702,28 @@ const PADRAO = {
   config:{nomeEla:"Noiva", faturaNoVencimento:true,
     cats:["Mercado","Casa","Filho","Pensão","Escola","Carro","Gasolina","Saúde","Impostos","Restaurante","Lazer","Roupas","Assinaturas","Beleza","Casamento","Pets","Outros"],
     catsEnt:["Salário","Pró-labore","Dividendos","Freela","Reembolso","Outros"]},
-  cartoes:[], lancamentos:[], compras:[]
+  cartoes:[], lancamentos:[], compras:[], lixo:{}, pagos:{}
 };
 const CHAVE_LOCAL = "nossocaixa:v1";
 let S = null;
 let api = null;             // namespace do artifact
 let modo = "local";         // local | nuvem | leitura
 let salvando = false, pendente = false, timerSalvar = null, nuvemFalhou = false;
+let ultimaSync = 0, timerPoll = null;
+let usaArquivo = true;      // salva em dados/estado.json; vira false se o runtime não aceitar
+let ultimaPub = "";         // impressão do que já foi publicado, evita republicar igual
+let semeou = false;         // já tentou criar a cópia na nuvem nesta sessão
+const AGORA = ()=> Date.now();
+function carimbar(r){ if(r) r.mod = AGORA(); return r; }
+function marcarLixo(idAlvo){ S.lixo = S.lixo || {}; S.lixo[idAlvo] = AGORA(); }
+function estaPago(ch){ const r = S.pagos && S.pagos[ch]; return !!(r && r.p); }
+function alternarPago(ch){
+  S.pagos = S.pagos || {};
+  S.pagos[ch] = {p: !estaPago(ch), mod: AGORA()};
+  S.updatedAt = AGORA();
+  agendarSalvar(); render();
+}
+function chaveFatura(compra, comp){ return compra.fin ? "c:"+compra.id+"|"+comp : "f:"+compra.cartao+"|"+comp; }
 
 function clone(o){ return JSON.parse(JSON.stringify(o)); }
 function normaliza(e){
@@ -691,6 +732,9 @@ function normaliza(e){
   s.cartoes = Array.isArray(s.cartoes)?s.cartoes:[];
   s.lancamentos = Array.isArray(s.lancamentos)?s.lancamentos:[];
   s.compras = Array.isArray(s.compras)?s.compras:[];
+  s.lixo = (s.lixo && typeof s.lixo==="object") ? s.lixo : {};
+  s.pagos = (s.pagos && typeof s.pagos==="object") ? s.pagos : {};
+  [s.cartoes, s.lancamentos, s.compras].forEach(arr=>arr.forEach(r=>{ if(r && !r.mod) r.mod = 1; }));
   // migração da versão de perfis (A/B/N) para a etiqueta "dela"
   if(e && e.config && !e.config.nomeEla && e.config.nomeB) s.config.nomeEla = e.config.nomeB;
   const migra = r => { if(r && r.dela===undefined){ r.dela = (r.perfil === "B"); delete r.perfil; } return r; };
@@ -699,6 +743,48 @@ function normaliza(e){
   ["Pensão","Escola","Impostos"].forEach(c=>{ if(s.config.cats.indexOf(c)<0) s.config.cats.push(c); });
   s.v = 2;
   return s;
+}
+function mesclarLista(a, b, lixo){
+  const m = new Map();
+  (a||[]).forEach(r=>{ if(r && r.id) m.set(r.id, r); });
+  (b||[]).forEach(r=>{
+    if(!r || !r.id) return;
+    const p = m.get(r.id);
+    if(!p || (r.mod||0) > (p.mod||0)) m.set(r.id, r);
+  });
+  const out = [];
+  m.forEach((r,idAlvo)=>{ if((lixo[idAlvo]||0) < (r.mod||0)) out.push(r); });
+  return out;
+}
+function mesclar(a, b){
+  if(!a) return b; if(!b) return a;
+  const lixo = Object.assign({}, a.lixo||{});
+  const bl = b.lixo||{};
+  for(const k in bl) lixo[k] = Math.max(lixo[k]||0, bl[k]);
+  const corte = AGORA() - 1000*60*60*24*180;
+  for(const k in lixo) if(lixo[k] < corte) delete lixo[k];
+  const pagos = Object.assign({}, a.pagos||{});
+  const bp = b.pagos||{};
+  for(const k in bp){
+    const atual = pagos[k];
+    if(!atual || (bp[k].mod||0) > (atual.mod||0)) pagos[k] = bp[k];
+  }
+  const base = (b.updatedAt||0) > (a.updatedAt||0) ? b : a;
+  return {
+    v:2,
+    updatedAt: Math.max(a.updatedAt||0, b.updatedAt||0),
+    config: clone(base.config),
+    lixo, pagos,
+    cartoes: mesclarLista(a.cartoes, b.cartoes, lixo),
+    lancamentos: mesclarLista(a.lancamentos, b.lancamentos, lixo),
+    compras: mesclarLista(a.compras, b.compras, lixo)
+  };
+}
+function impressao(e){
+  if(!e) return "";
+  const ids = arr => (arr||[]).map(r=>r.id+":"+(r.mod||0)).sort().join(",");
+  const pg = Object.keys(e.pagos||{}).sort().map(k=>k+":"+(e.pagos[k].p?1:0)+":"+(e.pagos[k].mod||0)).join(",");
+  return ids(e.cartoes)+"|"+ids(e.lancamentos)+"|"+ids(e.compras)+"|"+pg+"|"+JSON.stringify(e.config);
 }
 function lerEmbutido(){
   try{ return normaliza(JSON.parse(document.getElementById("estado").textContent)); }
@@ -884,8 +970,10 @@ function marcarStatus(){
   const p = el("#ponto"), t = el("#status-txt");
   if(!p) return;
   p.className = "ponto " + (salvando?"ocupado": modo==="nuvem"?"": modo==="leitura"?"frio": nuvemFalhou?"ruim":"frio");
-  t.textContent = salvando ? "salvando" : modo==="nuvem" ? "salvo na nuvem" : modo==="leitura" ? "só leitura"
-    : nuvemFalhou ? "falha ao salvar na nuvem" : "salvo neste aparelho";
+  const min = ultimaSync ? Math.floor((AGORA()-ultimaSync)/60000) : -1;
+  const quando = min < 0 ? "" : min < 1 ? " · agora" : min < 60 ? " · há "+min+" min" : " · há "+Math.floor(min/60)+" h";
+  t.textContent = salvando ? "salvando" : modo==="nuvem" ? "na nuvem"+quando : modo==="leitura" ? "só leitura"
+    : nuvemFalhou ? "falha ao salvar na nuvem" : "só neste aparelho";
 }
 function agendarSalvar(){
   S.updatedAt = Date.now();
@@ -897,21 +985,36 @@ function agendarSalvar(){
 async function salvar(){
   if(!api || modo==="leitura") { marcarStatus(); return; }
   if(salvando){ pendente = true; return; }
+  if(impressao(S) === ultimaPub){ marcarStatus(); return; }
   salvando = true; marcarStatus();
+  // antes de publicar, junta com o que já está na nuvem para não apagar o que veio de outro aparelho
+  if(usaArquivo){
+    try{
+      const remoto = await baixarNuvem();
+      if(remoto){
+        const antes = impressao(S);
+        S = mesclar(S, remoto);
+        if(impressao(S) !== antes){ gravarLocal(); render(); }
+      }
+    }catch(_){}
+  }
   const corpo = JSON.stringify(S);
+  const marca = impressao(S);
   try{
+    if(!usaArquivo) throw {code:"capability_disabled"};
     await api.publish({"dados/estado.json": corpo});
-    modo = "nuvem"; nuvemFalhou = false;
+    modo = "nuvem"; nuvemFalhou = false; ultimaSync = AGORA(); ultimaPub = marca;
   }catch(e){
     const c = e && e.code;
     if(c==="conflict"){ torrada("Alguém salvou antes — recarregando com a versão mais nova."); }
     else if(c==="not_writer"||c==="not_granted"||c==="not_declared"||c==="consent_required"){ modo="leitura"; torrada("Este acesso é só de leitura."); }
     else if(c==="rate_limited"){ pendente = true; setTimeout(()=>{ salvando=false; salvar(); }, 12000); }
     else if(c==="capability_disabled"||c==="capability_removed"||c==="read_only_path"||c==="transform_error"||c==="invalid_content"){
+      usaArquivo = false;
       try{
         sessionStorage.setItem("nc:volta", JSON.stringify({aba,mes,ver}));
         await api.publish(docCompleto(S));
-        modo = "nuvem"; nuvemFalhou = false;
+        modo = "nuvem"; nuvemFalhou = false; ultimaSync = AGORA(); ultimaPub = marca;
       }catch(e2){
         if(e2 && e2.code==="conflict"){ torrada("Alguém salvou antes — recarregando."); }
         else { modo="local"; nuvemFalhou=true; torrada("Não deu para salvar na nuvem; guardei neste aparelho."); }
@@ -945,13 +1048,49 @@ async function conectar(){
     if(api) { modo = "nuvem"; marcarStatus(); }
   }catch(_){}
 }
-async function carregarNuvem(){
+async function baixarNuvem(){
   try{
-    const r = await fetch("dados/estado.json?t="+Date.now(), {cache:"no-store"});
-    if(!r.ok) return;
-    const e = normaliza(await r.json());
-    if((e.updatedAt||0) > (S.updatedAt||0)){ S = e; gravarLocal(); render(); }
-  }catch(_){}
+    const r = await fetch("dados/estado.json?t="+AGORA(), {cache:"no-store"});
+    if(!r.ok) return null;
+    const j = await r.json();
+    if(!j || typeof j !== "object") return null;
+    return normaliza(j);
+  }catch(_){ return null; }
+}
+// junta o que veio da nuvem com o que está aqui; devolve true se algo mudou
+async function sincronizar(silencioso){
+  if(!usaArquivo){
+    // a cópia da nuvem é o próprio HTML publicado; recarregar a página é o que traz novidade
+    if(!silencioso) torrada("Neste aparelho a atualização vem ao recarregar a página.");
+    return false;
+  }
+  const remoto = await baixarNuvem();
+  if(!remoto){
+    // ainda não existe cópia na nuvem: manda a nossa uma vez
+    const temAlgo = S.lancamentos.length || S.compras.length || S.cartoes.length;
+    if(api && modo!=="leitura" && temAlgo && !semeou){ semeou = true; agendarSalvar(); }
+    if(!silencioso) torrada(temAlgo ? "Ainda não havia nada na nuvem — mandei os seus lançamentos para lá." : "Ainda não há nada na nuvem.");
+    return false;
+  }
+  ultimaSync = AGORA();
+  ultimaPub = impressao(remoto);
+  const antes = impressao(S);
+  const junto = mesclar(S, remoto);
+  const mudou = impressao(junto) !== antes;
+  S = junto;
+  gravarLocal(); render();
+  // o que temos aqui é mais completo que a nuvem: devolve
+  if(impressao(S) !== ultimaPub) agendarSalvar();
+  if(!silencioso) torrada(mudou ? "Atualizado com o outro aparelho." : "Já estava tudo igual.");
+  return mudou;
+}
+function ligarPoll(){
+  clearInterval(timerPoll);
+  timerPoll = setInterval(()=>{ if(!document.hidden && api && !salvando) sincronizar(true); }, 45000);
+  document.addEventListener("visibilitychange", ()=>{
+    if(!document.hidden && api && !salvando && AGORA()-ultimaSync > 8000) sincronizar(true);
+  });
+  window.addEventListener("online", ()=>{ if(api) sincronizar(true); });
 }
 
 /* ===================== leitor de texto ===================== */
@@ -1242,16 +1381,16 @@ function importarLinhas(){
     if(l.rec && l.parcTotal<=1){
       const dupR = S.compras.some(c=>c.recorrente && c.cartao===cartao && c.desc===l.desc);
       if(dupR){ pulados++; continue; }
-      S.compras.push({id:id(), recorrente:true, cartao, dela:l.dela, desc:l.desc,
-        valorTotal:l.valor, avista:0, parcelas:1, fim:"", compInicio:comp, cat:l.cat, data:l.data});
+      S.compras.push(carimbar({id:id(), recorrente:true, cartao, dela:l.dela, desc:l.desc,
+        valorTotal:l.valor, avista:0, parcelas:1, fim:"", compInicio:comp, cat:l.cat, data:l.data}));
       n++; continue;
     }
     const dup = S.compras.some(c=>!c.recorrente && c.cartao===cartao && c.desc===l.desc && c.compInicio===compInicio
       && Math.abs(valorParcela(c,1) - l.valor) < 0.02 && c.parcelas===parcelas);
     if(dup){ pulados++; continue; }
-    S.compras.push({id:id(), cartao, dela:l.dela, desc:l.desc,
+    S.compras.push(carimbar({id:id(), cartao, dela:l.dela, desc:l.desc,
       valorTotal: Math.round(l.valor*parcelas*100)/100, avista:0,
-      parcelas, compInicio, cat:l.cat, data:l.data});
+      parcelas, compInicio, cat:l.cat, data:l.data}));
     n++;
   }
   impLinhas = [];
@@ -1357,6 +1496,7 @@ function salvarEditor(){
     else l.dela = el("#ed-quem").value==="ela";
     l.fixo = el("#ed-fixo").checked;
     l.fim = l.fixo ? (el("#ed-fim").value || "") : "";
+    carimbar(l);
   }else{
     const c = S.compras.find(x=>x.id===edAtual.id); if(!c) return;
     const rec = !c.fin && el("#ed-recorrente").checked;
@@ -1371,6 +1511,7 @@ function salvarEditor(){
     c.dela = el("#ed-quem").value==="ela";
     if(c.fin) c.tipoDiv = el("#ed-tipodiv").value;
     else c.cartao = el("#ed-cartao").value || c.cartao;
+    carimbar(c);
   }
   el("#dlg-editar").close();
   edAtual = null;
@@ -1396,6 +1537,29 @@ function abrirDetalhe(titulo, sub, itens){
 function assinaturasDoMes(comp, filtro){
   return parcelasPagasEm(comp, filtro).filter(p=>p.compra.recorrente);
 }
+function faltaSair(comp, filtro){
+  let t = 0;
+  for(const l of S.lancamentos){
+    if(l.tipo!=="gasto") continue;
+    if(filtro && !filtro(l.dela)) continue;
+    if(!ativoNoMes(l,comp)) continue;
+    if(!estaPago("l:"+l.id+"|"+comp)) t += l.valor;
+  }
+  for(const p of parcelasPagasEm(comp, filtro)){
+    if(!estaPago(chaveFatura(p.compra, comp))) t += p.valor;
+  }
+  return Math.round(t*100)/100;
+}
+function faltaEntrar(comp, filtro){
+  let t = 0;
+  for(const l of S.lancamentos){
+    if(l.tipo!=="entrada") continue;
+    if(filtro && !filtro(l.dela)) continue;
+    if(!ativoNoMes(l,comp)) continue;
+    if(!estaPago("l:"+l.id+"|"+comp)) t += l.valor;
+  }
+  return Math.round(t*100)/100;
+}
 function reembolsoDela(comp){
   return S.lancamentos.filter(l=>l.tipo==="entrada" && l.reemb && ativoNoMes(l,comp))
     .reduce((s,l)=>s+l.valor,0);
@@ -1408,7 +1572,7 @@ function itensEntradas(comp, f){
 function itensAVista(comp, f){
   return S.lancamentos.filter(l=>l.tipo==="gasto" && ativoNoMes(l,comp) && (!f || f(l.dela)))
     .sort((a,b)=>b.valor-a.valor)
-    .map(l=>({icone:"↓", titulo:l.desc, sub:(l.cat||"")+(l.fixo?" · fixo":"")+(l.dela?" · "+esc(nomeEla()):""), valor:l.valor, sinal:"−"}));
+    .map(l=>({icone:"↓", titulo:l.desc, sub:(l.cat||"")+(l.fixo?" · fixo":"")+(l.dela?" · "+esc(nomeEla()):"")+(estaPago("l:"+l.id+"|"+comp)?" · pago":""), valor:l.valor, sinal:"−", pago:estaPago("l:"+l.id+"|"+comp)}));
 }
 function itensParcelas(comp, f, filtroCompra){
   return parcelasPagasEm(comp, f)
@@ -1420,7 +1584,7 @@ function itensParcelas(comp, f, filtroCompra){
       sub: (p.compra.cat||"") + " · " + (p.compra.recorrente ? "assinatura" : p.n+"/"+p.compra.parcelas)
          + (p.compra.fin ? " · "+rotuloDivida(p.compra) : " · fatura de "+compRotulo(p.faturaDe,true))
          + (p.compra.dela ? " · "+esc(nomeEla()) : ""),
-      valor: p.valor, sinal:"−"
+      valor: p.valor, sinal:"−", pago: estaPago(chaveFatura(p.compra, comp))
     }));
 }
 function itensSaidas(comp, f){
@@ -1482,6 +1646,8 @@ function renderAbas(){
 }
 
 function renderPainel(){
+  const semNuvem = !api && !(window.claude && window.claude.use);
+  el("#aviso-local").classList.toggle("oculto", !semNuvem);
   const f = filtroAtual(), fx = fluxo(mes, f);
   const saldo = fx.saldo;
   el("#p-saldo").textContent = R$(saldo);
@@ -1491,11 +1657,24 @@ function renderPainel(){
   b.className = pct>=100?"neg":pct>=85?"wrn":"pos";
   el("#p-saldo-sub").textContent = fx.ent>0 ? pct+"% da renda comprometida" : "sem entradas lançadas neste mês";
   el("#p-entrou").textContent = R$(fx.ent);
-  el("#p-entrou-sub").textContent = "entradas do mês";
   el("#p-saiu").textContent = R$(fx.saida);
   el("#p-saiu-sub").textContent = R$(fx.fat)+" em faturas"
     + (fx.fin>0 ? " · "+R$(fx.fin)+" em parcelas sem cartão" : "")
     + " · "+R$(fx.gas)+" à vista";
+
+  const falta = faltaSair(mes, f);
+  const temPago = falta < fx.saida - 0.01;
+  el("#card-falta").classList.toggle("oculto", fx.saida<=0);
+  if(fx.saida>0){
+    el("#p-falta").textContent = R$(falta);
+    el("#p-falta").className = "valor " + (falta<=0.01 ? "pos" : "");
+    el("#p-falta-sub").textContent = falta<=0.01 ? "o mês está quitado"
+      : temPago ? R$(fx.saida-falta)+" já pago" : "nada marcado como pago ainda";
+  }
+  const faltaEnt = faltaEntrar(mes, f);
+  el("#p-entrou-sub").textContent = fx.ent<=0 ? "entradas do mês"
+    : faltaEnt<=0.01 ? "tudo recebido"
+    : faltaEnt < fx.ent - 0.01 ? R$(faltaEnt)+" ainda a receber" : "entradas do mês";
 
   const fd = fluxo(mes, d=>!!d);
   const totalDela = fd.gas + fd.fat;
@@ -1523,14 +1702,17 @@ function renderPainel(){
     const pagas = parcelasPagasEm(mes, f);
     lista.innerHTML = S.cartoes.map(c=>{
       const v = faturaCartao(c.id, mes, f); tot += v;
+      const pgFat = estaPago("f:"+c.id+"|"+mes);
       const doCard = pagas.filter(p=>p.compra.cartao===c.id);
       const ps = doCard.length;
       const de = doCard.length ? doCard[0].faturaDe : compSoma(mes, -deslocCartao(c.id));
-      return '<div class="item clicavel" data-fatura="'+c.id+'"><div class="icone">💳</div>'
+      return '<div class="item clicavel'+(pgFat?" pago":"")+'" data-fatura="'+c.id+'"><div class="icone">💳</div>'
         + '<div class="desc"><b>'+esc(c.nome)+'</b><small>'
         + 'fatura de '+compRotulo(de,true)+' · vence '+String(c.vencimento).padStart(2,"0")+'/'+mes.split("-")[1]
         + ' · '+ps+' parcela'+(ps===1?"":"s")+'</small></div>'
-        + '<div class="num">'+R$(v)+'</div></div>';
+        + '<div class="num">'+R$(v)+'</div>'
+        + (v>0 ? '<button type="button" class="marcar" data-pagar="f:'+c.id+'|'+mes+'" aria-pressed="'+pgFat+'" title="Marcar fatura como paga">✓</button>' : '')
+        + '</div>';
     }).join("");
     el("#p-fat-total").textContent = R$(tot);
   }
@@ -1579,20 +1761,22 @@ function renderPainel(){
   for(const l of S.lancamentos){
     if(f && !f(l.dela)) continue;
     if(!ativoNoMes(l,mes)) continue;
-    movs.push({tipo:l.tipo, desc:l.desc, cat:l.cat, dela:l.dela, valor:l.valor, data:l.data, fixo:l.fixo, ref:l.id, origem:"l"});
+    movs.push({tipo:l.tipo, desc:l.desc, cat:l.cat, dela:l.dela, valor:l.valor, data:l.data, fixo:l.fixo, ref:l.id, origem:"l",
+      chavePago:"l:"+l.id+"|"+mes, pago: estaPago("l:"+l.id+"|"+mes)});
   }
   for(const p of parcelasPagasEm(mes, f)){
     movs.push({tipo:"parcela", fin:p.compra.fin, desc:p.compra.desc, cat:p.compra.cat, dela:p.compra.dela, valor:p.valor,
       data:p.compra.data, extra: p.compra.recorrente ? "assinatura" : p.n+"/"+p.compra.parcelas,
       fatura: p.compra.fin ? "" : "fatura de "+compRotulo(p.faturaDe,true),
-      ref:p.compra.id, origem:"c"});
+      ref:p.compra.id, origem:"c",
+      chavePago: chaveFatura(p.compra, mes), pago: estaPago(chaveFatura(p.compra, mes))});
   }
   movs.sort((a,b)=> (b.data||"").localeCompare(a.data||""));
   el("#p-mov-qtd").textContent = movs.length ? movs.length+" itens" : "";
   el("#p-movimento").innerHTML = movs.length ? movs.map(m=>{
     const sinal = m.tipo==="entrada" ? "pos":"";
     const ic = m.tipo==="entrada"?"↑":m.tipo==="parcela"?(m.fin?"🏦":"💳"):"↓";
-    return '<div class="item clicavel" data-editar="'+m.origem+':'+m.ref+'"><div class="icone">'+ic+'</div>'
+    return '<div class="item clicavel'+(m.pago?" pago":"")+'" data-editar="'+m.origem+':'+m.ref+'"><div class="icone">'+ic+'</div>'
       + '<div class="desc"><b>'+esc(m.desc)+'</b><small>'
       + (m.cat?esc(m.cat):"")
       + (m.dela? ' · '+etiqueta(true):"")
@@ -1601,7 +1785,7 @@ function renderPainel(){
       + (m.fixo? ' · fixo':"")
       + '</small></div>'
       + '<div class="num '+sinal+'">'+(m.tipo==="entrada"?"+ ":"− ")+R$(m.valor)+'</div>'
-      + '<button type="button" class="btn fantasma mini" data-apagar="'+m.origem+':'+m.ref+'" title="Apagar">✕</button></div>';
+      + '<button type="button" class="marcar" data-pagar="'+m.chavePago+'" aria-pressed="'+m.pago+'" title="'+(m.tipo==="entrada"?"Marcar como recebido":"Marcar como pago")+'">✓</button></div>';
   }).join("") : '<div class="vazio"><b>Mês em branco</b>Use o botão + para lançar o primeiro gasto ou entrada.</div>';
 }
 
@@ -2001,6 +2185,10 @@ function resumoTexto(){
 }
 
 function renderAjustes(){
+  el("#aj-sync-rot").textContent = modo==="nuvem" ? "ligada" : modo==="leitura" ? "só leitura" : "desligada";
+  el("#aj-sync-txt").innerHTML = modo==="nuvem"
+    ? "Este aparelho está guardando na nuvem. O que você lançar aqui aparece nos outros aparelhos quando eles abrirem ou sincronizarem — e nada é apagado quando os dois têm coisas diferentes: eu junto os dois lados."
+    : "Este aparelho não conseguiu falar com a nuvem, então os lançamentos ficam <b>só aqui</b>. Se isso persistir, use <b>Baixar backup</b> e restaure no outro aparelho.";
   const venc = S.config.faturaNoVencimento !== false;
   els("#seg-regime button").forEach(b=>b.setAttribute("aria-pressed", String((b.dataset.regime==="venc")===venc)));
   el("#aj-regime-txt").innerHTML = venc
@@ -2014,6 +2202,7 @@ function renderAjustes(){
 /* ===================== ações ===================== */
 function apagar(chave){
   const [tipo, ref] = chave.split(":");
+  marcarLixo(ref);
   if(tipo==="c") S.compras = S.compras.filter(c=>c.id!==ref);
   else S.lancamentos = S.lancamentos.filter(l=>l.id!==ref);
   agendarSalvar(); render(); torrada("Lançamento apagado.");
@@ -2043,6 +2232,7 @@ function exemplo(){
     {id:id(),dela:false,recorrente:true,cartao:c1.id,desc:"Netflix",valorTotal:59.90,parcelas:1,fim:"",compInicio:compSoma(m,-6),cat:"Assinaturas",data:iso(hoje())},
     {id:id(),dela:false,recorrente:true,cartao:c1.id,desc:"Spotify",valorTotal:34.90,parcelas:1,fim:"",compInicio:compSoma(m,-6),cat:"Assinaturas",data:iso(hoje())}
   ];
+  [].concat(S.cartoes,S.lancamentos,S.compras).forEach(carimbar);
   agendarSalvar(); render(); torrada("Dados de exemplo carregados.");
 }
 
@@ -2069,6 +2259,8 @@ function ligar(){
     const f = filtroAtual();
     if(q==="entrou") abrirDetalhe("Entradas", cap(compRotulo(mes)), itensEntradas(mes,f));
     if(q==="saiu") abrirDetalhe("Tudo que saiu", cap(compRotulo(mes)), itensSaidas(mes,f));
+    if(q==="falta") abrirDetalhe("Ainda falta sair", cap(compRotulo(mes)),
+      itensAVista(mes,f).concat(itensParcelas(mes,f)).filter(i=>!i.pago).sort((a,b)=>b.valor-a.valor));
     if(q==="dela"){
       const itens = itensAVista(mes, d=>!!d).concat(itensParcelas(mes, d=>!!d)).sort((a,b)=>b.valor-a.valor);
       const tot = itens.reduce((s,i)=>s+i.valor,0), reemb = reembolsoDela(mes);
@@ -2079,19 +2271,26 @@ function ligar(){
         itens);
     }
   };
-  ["entrou","saiu","dela"].forEach(q=>{
+  ["entrou","saiu","dela","falta"].forEach(q=>{
     const n = el("#card-"+q);
     n.addEventListener("click", ()=>abrirCard(q));
     n.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); abrirCard(q); } });
   });
   el("#dl-fechar").onclick = ()=>el("#dlg-lista").close();
+  el("#status").onclick = async ()=>{
+    if(!api){ torrada("Este aparelho está sem a nuvem — os dados ficam só aqui."); return; }
+    torrada("Procurando novidades…");
+    await sincronizar(false);
+  };
   el("#p-faturas").addEventListener("click", e=>{
+    if(e.target.closest("[data-pagar]")) return;
     const n = e.target.closest("[data-fatura]"); if(!n) return;
     const c = S.cartoes.find(x=>x.id===n.dataset.fatura); if(!c) return;
     abrirDetalhe("Fatura do "+c.nome, "vence "+String(c.vencimento).padStart(2,"0")+"/"+mes.split("-")[1]+"/"+mes.split("-")[0],
       itensParcelas(mes, filtroAtual(), co=>co.cartao===c.id));
   });
   el("#p-fechando").addEventListener("click", e=>{
+    if(e.target.closest("[data-pagar]")) return;
     const n = e.target.closest("[data-fechando]"); if(!n) return;
     const c = S.cartoes.find(x=>x.id===n.dataset.fechando); if(!c) return;
     const f = filtroAtual();
@@ -2143,6 +2342,8 @@ function ligar(){
   });
 
   document.addEventListener("click", async e=>{
+    const pg = e.target.closest("[data-pagar]");
+    if(pg){ e.stopPropagation(); alternarPago(pg.dataset.pagar); return; }
     const ed = e.target.closest("[data-editar]");
     if(ed && !e.target.closest("[data-apagar]")){
       const [o, r] = ed.dataset.editar.split(":");
@@ -2155,7 +2356,7 @@ function ligar(){
       const cid = c.dataset.apagarCartao;
       const n = S.compras.filter(x=>x.cartao===cid).length;
       if(await confirmar("Apagar cartão", n? "Este cartão tem "+n+" compra(s) parcelada(s). Elas continuam lançadas, mas sem cartão.":"Remover este cartão?")){
-        S.cartoes = S.cartoes.filter(x=>x.id!==cid); agendarSalvar(); render();
+        marcarLixo(cid); S.cartoes = S.cartoes.filter(x=>x.id!==cid); agendarSalvar(); render();
       }
       return;
     }
@@ -2249,19 +2450,19 @@ function ligar(){
     if(tipo==="fin"){
       const n = Math.max(1, parseInt(el("#f-parcelas").value||"1",10));
       const atual = Math.min(n, Math.max(1, parseInt(el("#f-atual").value||"1",10)));
-      S.compras.push({id:id(), fin:true, tipoDiv: el("#f-tipodiv").value, dela: el("#f-quem").value==="ela", cartao:"", desc,
+      S.compras.push(carimbar({id:id(), fin:true, tipoDiv: el("#f-tipodiv").value, dela: el("#f-quem").value==="ela", cartao:"", desc,
         valorTotal: Math.round(valor*n*100)/100, avista:num(el("#f-avista").value)||0,
-        parcelas:n, compInicio: compSoma(compHoje(), -(atual-1)), cat:el("#f-cat").value, data});
+        parcelas:n, compInicio: compSoma(compHoje(), -(atual-1)), cat:el("#f-cat").value, data}));
       torrada(DIVIDAS[el("#f-tipodiv").value]+" lançado: "+(n-atual+1)+" parcelas pela frente.");
     }else if(tipo==="cartao"){
       const cartao = el("#f-cartao").value;
       if(!cartao){ torrada("Cadastre um cartão antes."); aba="cartoes"; render(); return; }
       const cart = S.cartoes.find(c=>c.id===cartao);
       if(el("#f-assinatura").checked){
-        S.compras.push({id:id(), recorrente:true, dela: el("#f-quem").value==="ela", cartao, desc,
+        S.compras.push(carimbar({id:id(), recorrente:true, dela: el("#f-quem").value==="ela", cartao, desc,
           valorTotal:valor, avista:0, parcelas:1,
           compInicio: el("#f-comp").value || primeiraComp(data, cart),
-          fim: el("#f-fim").value || "", cat: el("#f-cat").value, data});
+          fim: el("#f-fim").value || "", cat: el("#f-cat").value, data}));
         torrada("Assinatura de "+R$(valor)+" por mês lançada.");
         agendarSalvar();
         el("#f-desc").value=""; el("#f-valor").value=""; el("#f-fim").value=""; el("#f-assinatura").checked=false;
@@ -2270,15 +2471,15 @@ function ligar(){
         return;
       }
       const n = Math.max(1, parseInt(el("#f-parcelas").value||"1",10));
-      S.compras.push({id:id(), dela: el("#f-quem").value==="ela", cartao, desc, valorTotal:valor,
+      S.compras.push(carimbar({id:id(), dela: el("#f-quem").value==="ela", cartao, desc, valorTotal:valor,
         avista:num(el("#f-avista").value)||0, parcelas:n,
         compInicio: el("#f-comp").value || primeiraComp(data, cart),
-        cat: el("#f-cat").value, data});
+        cat: el("#f-cat").value, data}));
       torrada(n+"x de "+R$(valor/n)+" lançadas.");
     }else{
-      S.lancamentos.push({id:id(), tipo: tipo==="entrada"?"entrada":"gasto", dela: tipo!=="entrada" && el("#f-quem").value==="ela",
+      S.lancamentos.push(carimbar({id:id(), tipo: tipo==="entrada"?"entrada":"gasto", dela: tipo!=="entrada" && el("#f-quem").value==="ela",
         desc, valor, cat:el("#f-cat").value, data, comp:compDe(data), fixo: el("#f-fixo").checked,
-        reemb: tipo==="entrada" && el("#f-reemb").checked});
+        reemb: tipo==="entrada" && el("#f-reemb").checked}));
       torrada(tipo==="entrada"?"Entrada lançada.":"Gasto lançado.");
     }
     agendarSalvar();
@@ -2295,14 +2496,18 @@ function ligar(){
     e.preventDefault();
     const nome = el("#ct-nome").value.trim();
     if(!nome) return;
-    S.cartoes.push({id:id(), nome,
+    S.cartoes.push(carimbar({id:id(), nome,
       fechamento: Math.min(31,Math.max(1,parseInt(el("#ct-fecha").value||"28",10))),
       vencimento: Math.min(31,Math.max(1,parseInt(el("#ct-vence").value||"10",10))),
-      limite: num(el("#ct-limite").value)||0});
+      limite: num(el("#ct-limite").value)||0}));
     el("#form-cartao").reset(); el("#ct-fecha").value=28; el("#ct-vence").value=10;
     agendarSalvar(); render(); torrada("Cartão cadastrado.");
   });
 
+  el("#aj-sync").onclick = async ()=>{
+    if(!api){ torrada("Sem nuvem neste aparelho."); return; }
+    await sincronizar(false); renderAjustes();
+  };
   el("#seg-regime").addEventListener("click", e=>{
     const b = e.target.closest("button[data-regime]"); if(!b) return;
     S.config.faturaNoVencimento = (b.dataset.regime === "venc");
@@ -2325,7 +2530,9 @@ function ligar(){
   };
   el("#aj-zerar").onclick = async ()=>{
     if(await confirmar("Apagar tudo","Todos os lançamentos, cartões e compras somem. Baixe um backup antes se tiver dúvida.")){
-      const cfg = S.config; S = normaliza({config:cfg}); agendarSalvar(); render(); torrada("Tudo apagado.");
+      const cfg = S.config, lixo = Object.assign({}, S.lixo||{});
+      [].concat(S.cartoes,S.lancamentos,S.compras).forEach(r=>{ if(r&&r.id) lixo[r.id] = AGORA(); });
+      S = normaliza({config:cfg, lixo}); agendarSalvar(); render(); torrada("Tudo apagado.");
     }
   };
   el("#aj-exportar").onclick = async ()=>{
@@ -2350,6 +2557,25 @@ function ligar(){
       torrada("Copie este texto e guarde num arquivo.");
     }else torrada("Backup salvo.");
   };
+  el("#aj-arquivo").addEventListener("change", ev=>{
+    const f = ev.target.files && ev.target.files[0]; if(!f) return;
+    const fr = new FileReader();
+    fr.onload = async ()=>{
+      try{
+        const e = normaliza(JSON.parse(String(fr.result||"")));
+        const qtd = e.lancamentos.length + e.compras.length;
+        if(await confirmar("Restaurar backup", "Vou trazer "+qtd+" lançamento(s) e "+e.cartoes.length+" cartão(ões) deste arquivo. O que estiver aqui agora é substituído.")){
+          [].concat(e.cartoes,e.lancamentos,e.compras).forEach(carimbar);
+          e.updatedAt = AGORA();
+          S = e; ultimaPub = ""; agendarSalvar(); render();
+          torrada("Backup restaurado — "+qtd+" lançamentos.");
+        }
+      }catch(_){ torrada("Esse arquivo não parece um backup do Nosso Caixa."); }
+    };
+    fr.onerror = ()=>torrada("Não consegui abrir o arquivo.");
+    fr.readAsText(f, "utf-8");
+    ev.target.value = "";
+  });
   el("#aj-importar").onclick = async ()=>{
     const t = el("#aj-json");
     if(t.classList.contains("oculto") || !t.value.trim()){
@@ -2359,7 +2585,9 @@ function ligar(){
     try{
       const e = normaliza(JSON.parse(t.value));
       if(await confirmar("Restaurar backup","Isso substitui tudo o que está lançado agora.")){
-        S = e; agendarSalvar(); render(); t.classList.add("oculto"); torrada("Backup restaurado.");
+        [].concat(e.cartoes,e.lancamentos,e.compras).forEach(carimbar);
+        e.updatedAt = AGORA();
+        S = e; ultimaPub = ""; agendarSalvar(); render(); t.classList.add("oculto"); torrada("Backup restaurado.");
       }
     }catch(_){ torrada("Esse texto não parece um backup válido."); }
   };
@@ -2374,15 +2602,18 @@ function ligar(){
 function iniciar(){
   document.getElementById("root").appendChild(document.getElementById("shell").content.cloneNode(true));
   const embutido = lerEmbutido(), local = lerLocal();
-  S = (local && (local.updatedAt||0) > (embutido.updatedAt||0)) ? local : embutido;
-  if(local && (local.updatedAt||0) > (embutido.updatedAt||0)) modo = "local";
+  S = local ? mesclar(embutido, local) : embutido;
   try{
     const v = JSON.parse(sessionStorage.getItem("nc:volta")||"null");
     if(v){ aba=v.aba||aba; mes=v.mes||mes; ver=v.ver||ver; sessionStorage.removeItem("nc:volta"); }
   }catch(_){}
   ligar();
   render();
-  conectar().then(carregarNuvem);
+  ultimaPub = impressao(embutido);
+  conectar().then(()=>{
+    ligarPoll();
+    return sincronizar(true).then(()=>{ if(impressao(S) !== ultimaPub) agendarSalvar(); });
+  });
 }
 if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar);
 else iniciar();
